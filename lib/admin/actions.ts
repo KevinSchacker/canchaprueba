@@ -1,0 +1,76 @@
+"use server"
+
+import { createClient } from "@/lib/supabase/server"
+import { revalidatePath } from "next/cache"
+
+async function ensureAdmin() {
+  const supabase = await createClient()
+  const {
+    data: { user },
+  } = await supabase.auth.getUser()
+  if (!user) return { ok: false, error: "No autenticado" as const }
+
+  const { data: profile } = await supabase.from("profiles").select("role").eq("id", user.id).single()
+
+  if (profile?.role !== "admin") return { ok: false, error: "Solo administradores" as const }
+  return { ok: true as const, supabase, userId: user.id }
+}
+
+export async function upsertSubscription(formData: FormData) {
+  const auth = await ensureAdmin()
+  if (!auth.ok) return { error: auth.error }
+
+  const ownerId = formData.get("owner_id") as string
+  const status = formData.get("status") as string
+  const plan = (formData.get("plan") as string) || "basic"
+  const monthlyPrice = Number(formData.get("monthly_price") ?? 0)
+  const periodEnd = formData.get("current_period_end") as string
+
+  if (!ownerId || !status) return { error: "Faltan datos" }
+
+  const { error } = await auth.supabase.from("owner_subscriptions").upsert(
+    {
+      owner_id: ownerId,
+      status,
+      plan,
+      monthly_price: monthlyPrice,
+      current_period_start: new Date().toISOString(),
+      current_period_end: periodEnd ? new Date(periodEnd).toISOString() : null,
+    },
+    { onConflict: "owner_id" },
+  )
+
+  if (error) return { error: error.message }
+  revalidatePath("/admin/suscripciones")
+  return { ok: true }
+}
+
+export async function setSubscriptionStatus(formData: FormData) {
+  const auth = await ensureAdmin()
+  if (!auth.ok) return { error: auth.error }
+
+  const ownerId = formData.get("owner_id") as string
+  const status = formData.get("status") as string
+  if (!ownerId || !status) return { error: "Faltan datos" }
+
+  const { error } = await auth.supabase.from("owner_subscriptions").update({ status }).eq("owner_id", ownerId)
+
+  if (error) return { error: error.message }
+  revalidatePath("/admin/suscripciones")
+  return { ok: true }
+}
+
+export async function setUserRole(formData: FormData) {
+  const auth = await ensureAdmin()
+  if (!auth.ok) return { error: auth.error }
+
+  const userId = formData.get("user_id") as string
+  const role = formData.get("role") as string
+  if (!userId || !role) return { error: "Faltan datos" }
+
+  const { error } = await auth.supabase.from("profiles").update({ role }).eq("id", userId)
+
+  if (error) return { error: error.message }
+  revalidatePath("/admin/usuarios")
+  return { ok: true }
+}
