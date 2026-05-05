@@ -99,6 +99,26 @@ export async function upsertCourt(input: CourtInput) {
     return { ok: false as const, error: "No tenés permisos sobre ese complejo." }
   }
 
+  if (!input.id) {
+    const { data: sub } = await supabase
+      .from("owner_subscriptions")
+      .select("plan")
+      .eq("owner_id", userId)
+      .maybeSingle()
+    
+    const plan = sub?.plan || "basic"
+    const maxCourts = plan === "premium" ? 5 : 1
+
+    const { count, error: countErr } = await supabase
+      .from("courts")
+      .select("id, venues!inner(owner_id)", { count: "exact", head: true })
+      .eq("venues.owner_id", userId)
+    
+    if (count !== null && count >= maxCourts) {
+      return { ok: false as const, error: `Límite alcanzado: Tu plan ${plan} permite hasta ${maxCourts} cancha(s).` }
+    }
+  }
+
   const { data: sport } = await supabase.from("sports").select("id").eq("slug", input.sportSlug).maybeSingle()
   if (!sport) return { ok: false as const, error: "Deporte no válido." }
 

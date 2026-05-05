@@ -50,7 +50,7 @@ export function CourtForm({ venueId, sports, initial }: Props) {
   const [indoor, setIndoor] = useState(initial?.indoor ?? false)
   const [hasLighting, setHasLighting] = useState(initial?.hasLighting ?? true)
   const [pricePerSlot, setPricePerSlot] = useState(initial?.pricePerSlot ?? 8000)
-  const [slotDuration, setSlotDuration] = useState(initial?.slotDurationMinutes ?? 90)
+  const [slotDuration, setSlotDuration] = useState(initial?.slotDurationMinutes ?? 30)
   const [depositPct, setDepositPct] = useState(initial?.depositPercentage ?? 30)
   const [active, setActive] = useState(initial?.active ?? true)
   const [days, setDays] = useState<DaySchedule[]>(

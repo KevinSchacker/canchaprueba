@@ -1,8 +1,8 @@
 import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { CalendarCheck, Clock, MapPin, User } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
+import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
 import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -41,7 +41,7 @@ export default async function OwnerBookingsPage() {
     .from("bookings")
     .select(
       `
-      id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes,
+      id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
       courts!inner ( id, name, venue_id ),
       profiles!bookings_player_id_fkey ( full_name, phone )
     `,
@@ -55,9 +55,9 @@ export default async function OwnerBookingsPage() {
     end_time: string
     status: string
     total_price: string | number
-    deposit_amount: string | number
     deposit_paid: boolean
     notes: string | null
+    player_id: string
     courts: { id: string; name: string; venue_id: string }
     profiles: { full_name: string | null; phone: string | null } | null
   }
@@ -111,6 +111,7 @@ function Section({
     total_price: string | number
     deposit_amount: string | number
     deposit_paid: boolean
+    player_id: string
     courts: { id: string; name: string }
     profiles: { full_name: string | null; phone: string | null } | null
   }>
@@ -171,10 +172,19 @@ function Section({
                         <span className="font-medium text-foreground">
                           ${Number(b.deposit_amount).toLocaleString("es-AR")}
                         </span>{" "}
-                        {b.deposit_paid ? "(pagada)" : "(pendiente)"}
                       </span>
                     </div>
-                    <BookingActions bookingId={b.id} status={b.status} />
+                    <div className="flex gap-2">
+                      <BookingActions bookingId={b.id} status={b.status} />
+                      {b.status === "completed" && (
+                        <RateBookingDialog 
+                          bookingId={b.id} 
+                          revieweeType="player" 
+                          revieweeId={b.player_id} 
+                          title="Calificar jugador" 
+                        />
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -31,7 +31,7 @@ export default async function CourtDetailPage({
     .select(
       `
       id, name, surface, indoor, has_lighting, price_per_slot, slot_duration_minutes, deposit_percentage, active,
-      venues!inner ( id, name, address, city, phone, cover_image_url, active ),
+      venues!inner ( id, name, address, city, phone, cover_image_url, active, owner_id ),
       sports ( name )
     `,
     )
@@ -48,12 +48,22 @@ export default async function CourtDetailPage({
     slot_duration_minutes: number
     deposit_percentage: number
     active: boolean
-    venues: { id: string; name: string; address: string; city: string; phone: string | null; cover_image_url: string | null; active: boolean }
+    venues: { id: string; name: string; address: string; city: string; phone: string | null; cover_image_url: string | null; active: boolean; owner_id: string }
     sports: { name: string } | null
   }
   const c = court as unknown as CourtFull | null
 
   if (!c || !c.active || !c.venues?.active) notFound()
+
+  const { data: sub } = await supabase
+    .from("owner_subscriptions")
+    .select("status")
+    .eq("owner_id", c.venues.owner_id)
+    .maybeSingle()
+
+  if (!sub || (sub.status !== "active" && sub.status !== "trial")) {
+    notFound()
+  }
 
   const days = nextDays(14)
   const today = toDateKey(new Date())
@@ -159,6 +169,7 @@ export default async function CourtDetailPage({
           pricePerSlot={price}
           depositPercentage={c.deposit_percentage}
           slots={slots}
+          slotDurationMinutes={c.slot_duration_minutes}
         />
       </main>
 

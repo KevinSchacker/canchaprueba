@@ -6,8 +6,8 @@ import { LogoutButton } from "@/components/auth/logout-button"
 import { BottomNav } from "@/components/play/bottom-nav"
 import { Card } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { CalendarCheck, Clock, MapPin } from "lucide-react"
 import { CancelBookingButton } from "@/components/play/cancel-booking-button"
+import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
 import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -116,6 +116,8 @@ function Section({
     end_time: string
     status: string
     total_price: string | number
+    deposit_amount: string | number
+    deposit_paid: boolean
     courts: { id: string; name: string; venues: { id: string; name: string; city: string } }
   }>
   canCancel?: boolean
@@ -166,11 +168,27 @@ function Section({
                     <MapPin className="h-3.5 w-3.5 text-accent" /> {b.courts.venues.city}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3 pt-1">
-                  <span className="text-sm font-semibold text-foreground">
-                    ${Number(b.total_price).toLocaleString("es-AR")}
-                  </span>
+                <div className="flex items-center justify-between gap-3 pt-1 border-t border-border mt-1">
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-foreground">
+                      Total: ${Number(b.total_price).toLocaleString("es-AR")}
+                    </span>
+                    {Number(b.deposit_amount) > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {b.deposit_paid ? "Seña pagada: " : "Seña pendiente: "}
+                        ${Number(b.deposit_amount).toLocaleString("es-AR")}
+                      </span>
+                    )}
+                  </div>
                   {canCancel && b.status !== "cancelled" && <CancelBookingButton bookingId={b.id} />}
+                  {b.status === "completed" && (
+                    <RateBookingDialog 
+                      bookingId={b.id} 
+                      revieweeType="court" 
+                      revieweeId={b.courts.id} 
+                      title="Calificar cancha" 
+                    />
+                  )}
                 </div>
               </Card>
             </li>

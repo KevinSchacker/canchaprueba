@@ -4,6 +4,7 @@ import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { SearchFilters } from "@/components/play/search-filters"
 import { CourtCard } from "@/components/play/court-card"
+import { ClosestCourt } from "@/components/play/closest-court"
 import { BottomNav } from "@/components/play/bottom-nav"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { MapPin } from "lucide-react"
@@ -43,7 +44,7 @@ export default async function PlayPage({
     .select(
       `
       id, name, surface, indoor, has_lighting, price_per_slot, slot_duration_minutes,
-      venues!inner ( id, name, city, cover_image_url, active )
+      venues!inner ( id, name, city, cover_image_url, active, owner_id, latitude, longitude )
     `,
     )
     .eq("active", true)
@@ -65,9 +66,18 @@ export default async function PlayPage({
     has_lighting: boolean
     price_per_slot: string | number
     slot_duration_minutes: number
-    venues: { id: string; name: string; city: string; cover_image_url: string | null; active: boolean }
+    venues: { id: string; name: string; city: string; cover_image_url: string | null; active: boolean; owner_id: string; latitude: number | null; longitude: number | null }
   }
-  const courts = ((courtsData ?? []) as unknown as CourtRow[]).filter((c) => c.venues?.active)
+
+  // Cargar dueños con suscripción activa o de prueba
+  const { data: activeSubs } = await supabase
+    .from("owner_subscriptions")
+    .select("owner_id")
+    .in("status", ["active", "trial"])
+
+  const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
+
+  const courts = ((courtsData ?? []) as unknown as CourtRow[]).filter((c) => c.venues?.active && activeOwnerIds.has(c.venues.owner_id))
 
   // Ciudades sugeridas (top distintas)
   const { data: venuesData } = await supabase
@@ -121,11 +131,23 @@ export default async function PlayPage({
             </EmptyContent>
           </Empty>
         ) : (
-          <ul className="grid gap-4 sm:grid-cols-2">
-            {courts.map((c) => (
-              <li key={c.id}>
-                <CourtCard
-                  id={c.id}
+          <>
+            <ClosestCourt courts={courts.map(c => ({
+              id: c.id,
+              name: c.name,
+              surface: c.surface,
+              indoor: c.indoor,
+              hasLighting: c.has_lighting,
+              pricePerSlot: Number(c.price_per_slot),
+              slotDurationMinutes: c.slot_duration_minutes,
+              venues: c.venues
+            }))} />
+
+            <ul className="grid gap-4 sm:grid-cols-2">
+              {courts.map((c) => (
+                <li key={c.id}>
+                  <CourtCard
+                    id={c.id}
                   venueName={c.venues.name}
                   courtName={c.name}
                   city={c.venues.city}
