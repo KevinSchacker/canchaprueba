@@ -7,6 +7,8 @@ import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
 import { HeroLiveCourts } from "@/components/play/hero-live-courts"
 
+export const dynamic = "force-dynamic"
+
 export default async function HomePage() {
   const supabase = await createClient()
   const {
