@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo"
 import { CalendarCheck, MapPin, Search, Wallet, Users, Trophy } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { HeroLiveCourts } from "@/components/play/hero-live-courts"
 
 export default async function HomePage() {
   const supabase = await createClient()
@@ -15,6 +16,39 @@ export default async function HomePage() {
   if (user) {
     redirect("/dashboard")
   }
+
+  // Cargar canchas reales para mostrar en el inicio
+  const { data: courtsData } = await supabase
+    .from("courts")
+    .select(`
+      id, name, price_per_slot,
+      venues!inner ( id, name, city, latitude, longitude, active, owner_id ),
+      sports!inner ( name )
+    `)
+    .eq("active", true)
+
+  const { data: inactiveSubs } = await supabase
+    .from("owner_subscriptions")
+    .select("owner_id")
+    .in("status", ["past_due", "cancelled", "paused"])
+
+  const inactiveOwnerIds = new Set((inactiveSubs ?? []).map((s) => s.owner_id))
+
+  type CourtRaw = { id: string; name: string; price_per_slot: string | number; venues: { name: string; city: string; latitude: number | null; longitude: number | null; active: boolean; owner_id: string }; sports: { name: string } }
+  const courtsRaw = ((courtsData ?? []) as unknown as CourtRaw[])
+    .filter(c => c.venues.active && !inactiveOwnerIds.has(c.venues.owner_id))
+    .map(c => ({
+      id: c.id,
+      name: c.name,
+      price: Number(c.price_per_slot),
+      sport: c.sports.name,
+      venues: {
+        name: c.venues.name,
+        city: c.venues.city,
+        latitude: c.venues.latitude,
+        longitude: c.venues.longitude,
+      }
+    }))
 
   return (
     <main className="min-h-svh bg-background">
@@ -74,38 +108,7 @@ export default async function HomePage() {
                   En vivo
                 </span>
               </div>
-              <CardContent className="flex flex-col gap-3 p-5">
-                {[
-                  { name: "Padel Club Itaembé", time: "19:00", price: "$8.000", available: true },
-                  { name: "Misiones Padel Center", time: "20:00", price: "$9.500", available: true },
-                  { name: "El Selvático", time: "21:00", price: "$7.500", available: false },
-                ].map((c) => (
-                  <div
-                    key={c.name}
-                    className="flex items-center justify-between rounded-lg border border-border bg-card p-3"
-                  >
-                    <div className="flex flex-col">
-                      <span className="text-sm font-medium text-card-foreground">{c.name}</span>
-                      <span className="text-xs text-muted-foreground">Pádel · Cancha 1</span>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <div className="flex flex-col items-end">
-                        <span className="text-sm font-semibold text-foreground">{c.time}</span>
-                        <span className="text-xs text-muted-foreground">{c.price}</span>
-                      </div>
-                      <span
-                        className={
-                          c.available
-                            ? "rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary"
-                            : "rounded-full bg-muted px-2 py-1 text-xs font-medium text-muted-foreground"
-                        }
-                      >
-                        {c.available ? "Libre" : "Ocupado"}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
+              <HeroLiveCourts courts={courtsRaw} />
             </Card>
           </div>
         </div>
