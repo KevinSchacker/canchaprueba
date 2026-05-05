@@ -56,7 +56,15 @@ export function SubscriptionForm({
 
       <Field>
         <FieldLabel htmlFor={`plan-${ownerId}`}>Plan</FieldLabel>
-        <Input id={`plan-${ownerId}`} name="plan" defaultValue={defaultPlan} />
+        <Select name="plan" defaultValue={defaultPlan}>
+          <SelectTrigger id={`plan-${ownerId}`}>
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="basic">Básico</SelectItem>
+            <SelectItem value="premium">Premium</SelectItem>
+          </SelectContent>
+        </Select>
       </Field>
 
       <Field>
