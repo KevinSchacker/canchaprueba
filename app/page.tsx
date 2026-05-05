@@ -101,15 +101,6 @@ export default async function HomePage() {
           <div className="relative">
             <div className="absolute -inset-4 -z-10 rounded-3xl bg-gradient-to-br from-primary/10 via-transparent to-accent/10" />
             <Card className="overflow-hidden">
-              <div className="flex items-center justify-between border-b border-border bg-secondary px-5 py-3">
-                <div className="flex items-center gap-2">
-                  <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
-                  <span className="text-sm text-muted-foreground">Posadas, hoy</span>
-                </div>
-                <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-                  En vivo
-                </span>
-              </div>
               <HeroLiveCourts courts={courtsRaw} />
             </Card>
           </div>
