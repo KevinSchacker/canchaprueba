@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { PanelNav } from "@/components/owner/panel-nav"
+import { FullPCFooter } from "@/components/brand/fullpc-footer"
 
 export default async function PanelLayout({ children }: { children: React.ReactNode }) {
   const supabase = await createClient()
@@ -40,6 +41,8 @@ export default async function PanelLayout({ children }: { children: React.ReactN
       </header>
 
       <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-6">{children}</main>
+      
+      <FullPCFooter />
     </div>
   )
 }

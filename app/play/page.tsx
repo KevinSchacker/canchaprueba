@@ -5,6 +5,7 @@ import { LogoutButton } from "@/components/auth/logout-button"
 import { SearchFilters } from "@/components/play/search-filters"
 import { CourtCard } from "@/components/play/court-card"
 import { ClosestCourt } from "@/components/play/closest-court"
+import { FullPCFooter } from "@/components/brand/fullpc-footer"
 import { BottomNav } from "@/components/play/bottom-nav"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { MapPin } from "lucide-react"
@@ -164,6 +165,7 @@ export default async function PlayPage({
         )}
       </main>
 
+      <FullPCFooter />
       <BottomNav />
     </div>
   )

@@ -6,6 +6,7 @@ import { getAvailableSlots, nextDays, toDateKey } from "@/lib/booking/slots"
 import { DateStrip } from "@/components/play/date-strip"
 import { SlotGrid } from "@/components/play/slot-grid"
 import { Logo } from "@/components/brand/logo"
+import { FullPCFooter } from "@/components/brand/fullpc-footer"
 import { BottomNav } from "@/components/play/bottom-nav"
 
 export const dynamic = "force-dynamic"
@@ -173,6 +174,7 @@ export default async function CourtDetailPage({
         />
       </main>
 
+      <FullPCFooter />
       <BottomNav />
     </div>
   )

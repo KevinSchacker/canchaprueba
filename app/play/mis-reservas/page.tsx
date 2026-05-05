@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import Link from "next/link"
 import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
+import { FullPCFooter } from "@/components/brand/fullpc-footer"
 import { BottomNav } from "@/components/play/bottom-nav"
 import { Card } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
@@ -98,6 +99,7 @@ export default async function MyBookingsPage() {
         )}
       </main>
 
+      <FullPCFooter />
       <BottomNav />
     </div>
   )
