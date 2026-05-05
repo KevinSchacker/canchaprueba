@@ -37,6 +37,24 @@ export type VenueInput = {
 export async function upsertVenue(input: VenueInput) {
   const { supabase, userId } = await requireOwner()
 
+  // Geocodificar la dirección automáticamente con OpenStreetMap Nominatim
+  let latitude: number | null = null
+  let longitude: number | null = null
+  try {
+    const query = encodeURIComponent(`${input.address}, ${input.city}, Misiones, Argentina`)
+    const geoRes = await fetch(
+      `https://nominatim.openstreetmap.org/search?q=${query}&format=json&limit=1`,
+      { headers: { "User-Agent": "CanchAR/1.0" }, next: { revalidate: 0 } }
+    )
+    const geoData = await geoRes.json()
+    if (geoData && geoData.length > 0) {
+      latitude = parseFloat(geoData[0].lat)
+      longitude = parseFloat(geoData[0].lon)
+    }
+  } catch {
+    // Si falla la geocodificación, guardamos sin coordenadas
+  }
+
   const payload = {
     owner_id: userId,
     name: input.name,
@@ -47,6 +65,8 @@ export async function upsertVenue(input: VenueInput) {
     cover_image_url: input.coverImageUrl || null,
     province: "Misiones",
     active: true,
+    latitude,
+    longitude,
   }
 
   if (input.id) {
