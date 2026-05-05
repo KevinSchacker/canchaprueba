@@ -162,6 +162,7 @@ export default async function PlayPage({
               </li>
             ))}
           </ul>
+          </>
         )}
       </main>
 
