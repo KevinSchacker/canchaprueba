@@ -70,15 +70,15 @@ export default async function PlayPage({
     venues: { id: string; name: string; city: string; cover_image_url: string | null; active: boolean; owner_id: string; latitude: number | null; longitude: number | null }
   }
 
-  // Cargar dueños con suscripción activa o de prueba
-  const { data: activeSubs } = await supabase
+  // Cargar dueños con suscripción explícitamente inactiva
+  const { data: inactiveSubs } = await supabase
     .from("owner_subscriptions")
     .select("owner_id")
-    .in("status", ["active", "trial"])
+    .in("status", ["past_due", "cancelled", "paused"])
 
-  const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
+  const inactiveOwnerIds = new Set((inactiveSubs ?? []).map((s) => s.owner_id))
 
-  const courts = ((courtsData ?? []) as unknown as CourtRow[]).filter((c) => c.venues?.active && activeOwnerIds.has(c.venues.owner_id))
+  const courts = ((courtsData ?? []) as unknown as CourtRow[]).filter((c) => c.venues?.active && !inactiveOwnerIds.has(c.venues.owner_id))
 
   // Ciudades sugeridas (top distintas)
   const { data: venuesData } = await supabase
