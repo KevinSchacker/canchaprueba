@@ -54,22 +54,22 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
 
   const siblingsSchedules = (siblings ?? []).map((s) => {
     type Sched = { day_of_week: number; open_time: string; close_time: string }
-    const raw = (s.court_schedules as unknown as Sched[]).map((cs) => ({
+    const courtSchedules = (s.court_schedules as unknown as Sched[]) || []
+    
+    const raw = courtSchedules.map((cs) => ({
       dayOfWeek: cs.day_of_week,
-      openTime: cs.open_time.slice(0, 5),
-      closeTime: cs.close_time.slice(0, 5),
+      openTime: (cs.open_time || "00:00").slice(0, 5),
+      closeTime: (cs.close_time || "00:00").slice(0, 5),
     }))
     return { name: s.name, schedules: buildSchedulesFromInitial(raw) }
   })
 
-  type Court = typeof court & { sports: { slug: string }; price_rules: Record<string, unknown> | null }
-  const c = court as unknown as Court
+  // Asegurarnos de que court.sports no sea un array y manejar nulos
+  const sportObj = Array.isArray(court.sports) ? court.sports[0] : court.sports
+  const sportSlug = sportObj?.slug || "padel"
 
-  // Extraer price_rules
-  const priceRules = c.price_rules as {
-    night?: { from: string; to: string; price: number } | null
-    weekend?: { price: number } | null
-  } | null
+  // Extraer price_rules de forma segura
+  const priceRules = (court.price_rules as any) || {}
 
   return (
     <div className="flex flex-col gap-6">
@@ -103,27 +103,27 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
         sports={sports ?? []}
         siblingsSchedules={siblingsSchedules}
         initial={{
-          id: c.id,
-          name: c.name,
-          surface: c.surface,
-          indoor: c.indoor,
-          hasLighting: c.has_lighting,
-          pricePerSlot: Number(c.price_per_slot),
-          slotDurationMinutes: c.slot_duration_minutes,
-          depositPercentage: c.deposit_percentage,
-          active: c.active,
-          sportSlug: c.sports.slug,
+          id: court.id,
+          name: court.name,
+          surface: court.surface,
+          indoor: court.indoor,
+          hasLighting: court.has_lighting,
+          pricePerSlot: Number(court.price_per_slot),
+          slotDurationMinutes: court.slot_duration_minutes,
+          depositPercentage: court.deposit_percentage,
+          active: court.active,
+          sportSlug: sportSlug,
           schedules: (schedules ?? []).map((s) => ({
             dayOfWeek: s.day_of_week,
-            openTime: s.open_time.slice(0, 5),
-            closeTime: s.close_time.slice(0, 5),
+            openTime: (s.open_time || "00:00").slice(0, 5),
+            closeTime: (s.close_time || "00:00").slice(0, 5),
           })),
-          description: c.description as string | null,
-          maxPlayers: c.max_players as number | null,
-          cancellationHoursBefore: c.cancellation_hours_before as number | null,
-          cancellationRefundPct: c.cancellation_refund_pct as number | null,
-          maxDaysAhead: c.max_days_ahead as number | null,
-          minHoursAhead: c.min_hours_ahead as number | null,
+          description: court.description as string | null,
+          maxPlayers: court.max_players as number | null,
+          cancellationHoursBefore: court.cancellation_hours_before as number | null,
+          cancellationRefundPct: court.cancellation_refund_pct as number | null,
+          maxDaysAhead: court.max_days_ahead as number | null,
+          minHoursAhead: court.min_hours_ahead as number | null,
           nightPriceEnabled: !!(priceRules?.night),
           nightPriceFrom: priceRules?.night?.from ?? "20:00",
           nightPriceTo: priceRules?.night?.to ?? "23:00",
