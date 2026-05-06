@@ -6,11 +6,10 @@ import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { cn } from "@/lib/utils"
 import { Copy } from "lucide-react"
+import { type DaySchedule } from "@/lib/owner/utils"
 
 const DAY_LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
-
-export type DaySchedule = { enabled: boolean; openTime: string; closeTime: string }
 
 interface Props {
   days: DaySchedule[]
@@ -161,16 +160,4 @@ export function ScheduleEditor({ days, onChange, siblingsSchedules }: Props) {
       </div>
     </div>
   )
-}
 
-export function buildDefaultSchedules(): DaySchedule[] {
-  return Array.from({ length: 7 }, () => ({ enabled: true, openTime: "09:00", closeTime: "23:00" }))
-}
-
-export function buildSchedulesFromInitial(initial: { dayOfWeek: number; openTime: string; closeTime: string }[]): DaySchedule[] {
-  const days: DaySchedule[] = Array.from({ length: 7 }, () => ({ enabled: false, openTime: "09:00", closeTime: "23:00" }))
-  for (const s of initial) {
-    days[s.dayOfWeek] = { enabled: true, openTime: s.openTime.slice(0, 5), closeTime: s.closeTime.slice(0, 5) }
-  }
-  return days
-}

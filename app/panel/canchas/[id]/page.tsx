@@ -4,7 +4,7 @@ import Link from "next/link"
 import { ArrowLeft, CalendarX, Eye } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { CourtForm } from "@/components/owner/court-form"
-import { buildSchedulesFromInitial } from "@/components/owner/schedule-editor"
+import { buildSchedulesFromInitial } from "@/lib/owner/utils"
 
 export const dynamic = "force-dynamic"
 

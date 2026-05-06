@@ -8,12 +8,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Spinner } from "@/components/ui/spinner"
 import { Field, FieldDescription, FieldGroup, FieldLabel } from "@/components/ui/field"
 import { upsertCourt, type CourtScheduleInput } from "@/lib/owner/actions"
-import {
-  ScheduleEditor,
-  buildDefaultSchedules,
-  buildSchedulesFromInitial,
-  type DaySchedule,
-} from "@/components/owner/schedule-editor"
+import { ScheduleEditor } from "@/components/owner/schedule-editor"
+import { buildDefaultSchedules, buildSchedulesFromInitial, type DaySchedule } from "@/lib/owner/utils"
 import { cn } from "@/lib/utils"
 import { Info, DollarSign, Clock3, Users, BanknoteIcon, CalendarClock, AlignLeft, Moon, Star, Image as ImageIcon } from "lucide-react"
 import { CourtImagesUpload, type CourtImage } from "@/components/owner/court-images-upload"

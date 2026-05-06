@@ -3,7 +3,7 @@ import { redirect } from "next/navigation"
 import { CourtForm } from "@/components/owner/court-form"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
-import { buildSchedulesFromInitial } from "@/components/owner/schedule-editor"
+import { buildSchedulesFromInitial } from "@/lib/owner/utils"
 
 export const dynamic = "force-dynamic"
 
