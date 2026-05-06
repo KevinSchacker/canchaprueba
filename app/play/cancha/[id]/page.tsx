@@ -71,7 +71,7 @@ export default async function CourtDetailPage({
     .eq("owner_id", c.venues.owner_id)
     .maybeSingle()
 
-  if (sub && (sub.status === "cancelled" || sub.status === "paused" || sub.status === "past_due")) {
+  if (!sub || sub.status !== "active") {
     notFound()
   }
 
