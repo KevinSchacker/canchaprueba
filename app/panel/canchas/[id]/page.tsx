@@ -11,25 +11,33 @@ export const dynamic = "force-dynamic"
 export default async function EditCourtPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params
   const supabase = await createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  const { data: authData } = await supabase.auth.getUser()
+  const user = authData?.user
 
-  const { data: venue } = await supabase.from("venues").select("id").eq("owner_id", user!.id).maybeSingle()
-  if (!venue) redirect("/panel/complejo")
+  if (!user) {
+    redirect("/auth/login")
+  }
 
-  const { data: court } = await supabase
+  const { data: venue } = await supabase.from("venues").select("id").eq("owner_id", user.id).maybeSingle()
+  if (!venue) {
+    redirect("/panel/complejo")
+  }
+
+  const { data: court, error: courtError } = await supabase
     .from("courts")
     .select(
       `id, name, surface, indoor, has_lighting, price_per_slot, slot_duration_minutes, deposit_percentage, active,
        description, max_players, cancellation_hours_before, cancellation_refund_pct,
-       max_days_ahead, min_hours_ahead, price_rules, venue_id, sports!inner(slug)`,
+       max_days_ahead, min_hours_ahead, price_rules, venue_id, sports(slug)`,
     )
     .eq("id", id)
     .eq("venue_id", venue.id)
     .maybeSingle()
 
-  if (!court) notFound()
+  if (courtError || !court) {
+    console.error("Error loading court:", courtError)
+    notFound()
+  }
 
   const { data: schedules } = await supabase
     .from("court_schedules")
@@ -71,6 +79,11 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
   // Extraer price_rules de forma segura
   const priceRules = (court.price_rules as any) || {}
 
+  const safeNumber = (val: any, fallback: number | null = 0) => {
+    const n = Number(val)
+    return isNaN(n) ? fallback : n
+  }
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -108,9 +121,9 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
           surface: court.surface || "",
           indoor: !!court.indoor,
           hasLighting: !!court.has_lighting,
-          pricePerSlot: Number(court.price_per_slot || 0),
-          slotDurationMinutes: Number(court.slot_duration_minutes || 60),
-          depositPercentage: Number(court.deposit_percentage || 0),
+          pricePerSlot: safeNumber(court.price_per_slot, 0) as number,
+          slotDurationMinutes: safeNumber(court.slot_duration_minutes, 60) as number,
+          depositPercentage: safeNumber(court.deposit_percentage, 0) as number,
           active: !!court.active,
           sportSlug: sportSlug,
           schedules: (schedules ?? []).map((s) => ({
@@ -119,17 +132,17 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
             closeTime: (s.close_time || "00:00").slice(0, 5),
           })),
           description: court.description || "",
-          maxPlayers: Number(court.max_players || 4),
-          cancellationHoursBefore: Number(court.cancellation_hours_before || 24),
-          cancellationRefundPct: Number(court.cancellation_refund_pct || 100),
-          maxDaysAhead: Number(court.max_days_ahead || 14),
-          minHoursAhead: Number(court.min_hours_ahead || 1),
+          maxPlayers: safeNumber(court.max_players, 4) as number,
+          cancellationHoursBefore: safeNumber(court.cancellation_hours_before, 24) as number,
+          cancellationRefundPct: safeNumber(court.cancellation_refund_pct, 100) as number,
+          maxDaysAhead: safeNumber(court.max_days_ahead, 14) as number,
+          minHoursAhead: safeNumber(court.min_hours_ahead, 1) as number,
           nightPriceEnabled: !!(priceRules?.night),
           nightPriceFrom: priceRules?.night?.from || "20:00",
           nightPriceTo: priceRules?.night?.to || "23:00",
-          nightPrice: priceRules?.night?.price ? Number(priceRules.night.price) : null,
+          nightPrice: priceRules?.night?.price ? safeNumber(priceRules.night.price, null) : null,
           weekendPriceEnabled: !!(priceRules?.weekend),
-          weekendPrice: priceRules?.weekend?.price ? Number(priceRules.weekend.price) : null,
+          weekendPrice: priceRules?.weekend?.price ? safeNumber(priceRules.weekend.price, null) : null,
           images: (images || []).map((img) => ({ 
             id: img.id, 
             url: img.url, 

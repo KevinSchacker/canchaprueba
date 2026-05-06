@@ -26,10 +26,11 @@ export default async function NewCourtPage() {
 
   const siblingsSchedules = (siblings ?? []).map((s) => {
     type Sched = { day_of_week: number; open_time: string; close_time: string }
-    const raw = (s.court_schedules as unknown as Sched[]).map((cs) => ({
+    const courtSchedules = (s.court_schedules as unknown as Sched[]) || []
+    const raw = courtSchedules.map((cs) => ({
       dayOfWeek: cs.day_of_week,
-      openTime: cs.open_time.slice(0, 5),
-      closeTime: cs.close_time.slice(0, 5),
+      openTime: (cs.open_time || "09:00").slice(0, 5),
+      closeTime: (cs.close_time || "23:00").slice(0, 5),
     }))
     return { name: s.name, schedules: buildSchedulesFromInitial(raw) }
   })
