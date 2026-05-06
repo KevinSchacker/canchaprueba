@@ -31,10 +31,18 @@ export default async function HomePage() {
     .eq("active", true)
 
   const adminAuth = createAdminClient()
-  const { data: activeSubs } = await adminAuth
+  const { data: activeSubs, error: subsError } = await adminAuth
     .from("owner_subscriptions")
     .select("owner_id")
     .in("status", ["active", "trialing"])
+
+  const debugInfo = {
+    courtsDataLength: courtsData?.length || 0,
+    activeSubsLength: activeSubs?.length || 0,
+    subsError: subsError ? subsError.message : null,
+    hasServiceKey: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+    serviceKeyStart: process.env.SUPABASE_SERVICE_ROLE_KEY?.substring(0, 5)
+  }
 
   const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
 
@@ -68,6 +76,9 @@ export default async function HomePage() {
               <Link href="/auth/sign-up">Crear cuenta</Link>
             </Button>
           </nav>
+        </div>
+        <div className="bg-red-500 text-white p-2 text-xs text-center">
+          DEBUG INFO: {JSON.stringify(debugInfo)}
         </div>
       </header>
 
