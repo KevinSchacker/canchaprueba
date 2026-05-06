@@ -1,7 +1,18 @@
 import { createClient } from "@/lib/supabase/server"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Building2, CalendarCheck, CircleDot, ArrowRight, Sparkles } from "lucide-react"
+import {
+  Building2,
+  CalendarCheck,
+  CircleDot,
+  ArrowRight,
+  Sparkles,
+  TrendingUp,
+  Clock,
+  XCircle,
+  DollarSign,
+  BarChart3,
+} from "lucide-react"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 
 export const dynamic = "force-dynamic"
@@ -35,6 +46,15 @@ export default async function PanelHomePage() {
   }> = []
   let pendingCount = 0
 
+  // Stats del mes
+  let monthRevenue = 0
+  let monthBookings = 0
+  let monthCancelled = 0
+  let occupancyPct = 0
+  let peakHour = "--"
+  let todayOnline = 0
+  let todayPending = 0
+
   if (venue) {
     const { count } = await supabase
       .from("courts")
@@ -63,7 +83,98 @@ export default async function PanelHomePage() {
       .eq("courts.venue_id", venue.id)
       .eq("status", "pending")
     pendingCount = pc ?? 0
+
+    // ─── Estadísticas del mes ───
+    const now = new Date()
+    const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59).toISOString()
+
+    const { data: monthData } = await supabase
+      .from("bookings")
+      .select(
+        `id, start_time, end_time, status, total_price, deposit_amount, deposit_paid,
+         courts!inner ( venue_id, slot_duration_minutes )`,
+      )
+      .eq("courts.venue_id", venue.id)
+      .gte("start_time", firstOfMonth)
+      .lte("start_time", endOfMonth)
+
+    type MonthRow = {
+      id: string
+      start_time: string
+      end_time: string
+      status: string
+      total_price: string | number
+      deposit_amount: string | number
+      deposit_paid: boolean
+      courts: { venue_id: string; slot_duration_minutes: number }
+    }
+    const mList = (monthData ?? []) as unknown as MonthRow[]
+
+    // Ingresos = sum deposit_amount de las que tienen deposit_paid
+    monthRevenue = mList
+      .filter((b) => b.deposit_paid && b.status !== "cancelled")
+      .reduce((sum, b) => sum + Number(b.deposit_amount || 0), 0)
+
+    monthBookings = mList.filter((b) => b.status !== "cancelled").length
+    monthCancelled = mList.filter((b) => b.status === "cancelled").length
+
+    // Hora pico: la hora con más reservas
+    const hourMap: Record<number, number> = {}
+    mList
+      .filter((b) => b.status !== "cancelled")
+      .forEach((b) => {
+        const h = new Date(b.start_time).getHours()
+        hourMap[h] = (hourMap[h] || 0) + 1
+      })
+    const peakEntry = Object.entries(hourMap).sort((a, b) => Number(b[1]) - Number(a[1]))[0]
+    if (peakEntry) {
+      peakHour = `${String(peakEntry[0]).padStart(2, "0")}:00hs`
+    }
+
+    // Ocupación estimada: slots ocupados / slots posibles del mes
+    // Posibles = courts * días del mes * (horas promedio apertura / duración turno)
+    if (courtsCount > 0 && monthBookings > 0) {
+      const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
+      // Estimamos 14hs de apertura promedio, turnos de ~60min
+      const avgSlotsPerCourtPerDay = 14
+      const totalPossible = courtsCount * daysInMonth * avgSlotsPerCourtPerDay
+      occupancyPct = totalPossible > 0 ? Math.min(100, Math.round((monthBookings / totalPossible) * 100)) : 0
+    }
+
+    // ─── Caja del día ───
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
+    const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
+
+    const { data: todayData } = await supabase
+      .from("bookings")
+      .select(
+        `id, start_time, status, total_price, deposit_amount, deposit_paid,
+         courts!inner ( venue_id )`,
+      )
+      .eq("courts.venue_id", venue.id)
+      .gte("start_time", todayStart)
+      .lte("start_time", todayEnd)
+      .in("status", ["pending", "confirmed", "completed"])
+
+    type TodayRow = {
+      id: string
+      total_price: string | number
+      deposit_amount: string | number
+      deposit_paid: boolean
+      status: string
+    }
+    const tList = (todayData ?? []) as unknown as TodayRow[]
+
+    todayOnline = tList
+      .filter((b) => b.deposit_paid)
+      .reduce((sum, b) => sum + Number(b.deposit_amount || 0), 0)
+    todayPending = tList
+      .filter((b) => !b.deposit_paid)
+      .reduce((sum, b) => sum + Number(b.total_price || 0), 0)
   }
+
+  const monthName = new Date().toLocaleDateString("es-AR", { month: "long" })
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,6 +218,7 @@ export default async function PanelHomePage() {
         </Empty>
       ) : (
         <>
+          {/* Quick stats */}
           <div className="grid gap-4 md:grid-cols-3">
             <StatCard
               icon={<Building2 className="h-5 w-5" />}
@@ -131,6 +243,113 @@ export default async function PanelHomePage() {
             />
           </div>
 
+          {/* ── Dashboard de estadísticas del mes ── */}
+          <Card>
+            <CardHeader>
+              <div className="flex items-center gap-2">
+                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  <BarChart3 className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">
+                    Estadísticas de{" "}
+                    <span className="capitalize">{monthName}</span>
+                  </CardTitle>
+                  <CardDescription>Datos del mes en curso.</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                {/* Ingresos */}
+                <MiniStat
+                  icon={<DollarSign className="h-4 w-4" />}
+                  label="Ingresos (señas)"
+                  value={`$${monthRevenue.toLocaleString("es-AR")}`}
+                  color="text-primary"
+                />
+                {/* Ocupación */}
+                <MiniStat
+                  icon={<TrendingUp className="h-4 w-4" />}
+                  label="Ocupación"
+                  value={`${occupancyPct}%`}
+                  color="text-accent"
+                />
+                {/* Hora pico */}
+                <MiniStat
+                  icon={<Clock className="h-4 w-4" />}
+                  label="Hora pico"
+                  value={peakHour}
+                  color="text-foreground"
+                />
+                {/* Cancelaciones */}
+                <MiniStat
+                  icon={<XCircle className="h-4 w-4" />}
+                  label="Cancelaciones"
+                  value={String(monthCancelled)}
+                  color="text-destructive"
+                />
+              </div>
+
+              {/* Barra de ocupación visual */}
+              {monthBookings > 0 && (
+                <div className="mt-5">
+                  <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      {monthBookings} turnos confirmados este mes
+                    </span>
+                    <span>{occupancyPct}% ocupación</span>
+                  </div>
+                  <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all"
+                      style={{ width: `${Math.max(2, occupancyPct)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* ── Caja del día ── */}
+          {(todayOnline > 0 || todayPending > 0) && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Caja de hoy</CardTitle>
+                <CardDescription>Resumen de cobros del día.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <div className="flex flex-col rounded-lg border border-border p-3">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Cobrado online (señas)
+                    </span>
+                    <span className="mt-1 text-lg font-bold text-primary">
+                      ${todayOnline.toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col rounded-lg border border-border p-3">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      A cobrar en cancha
+                    </span>
+                    <span className="mt-1 text-lg font-bold text-accent">
+                      ${todayPending.toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                  <div className="flex flex-col rounded-lg border border-border p-3">
+                    <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Total del día
+                    </span>
+                    <span className="mt-1 text-lg font-bold text-foreground">
+                      ${(todayOnline + todayPending).toLocaleString("es-AR")}
+                    </span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* ── Próximas reservas ── */}
           <Card>
             <CardHeader>
               <CardTitle className="text-base">Próximas reservas</CardTitle>
@@ -193,5 +412,29 @@ function StatCard({
         </CardContent>
       </Card>
     </Link>
+  )
+}
+
+function MiniStat({
+  icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  color: string
+}) {
+  return (
+    <div className="flex items-center gap-3 rounded-lg border border-border p-3">
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-secondary ${color}`}>
+        {icon}
+      </div>
+      <div className="flex flex-col">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{label}</span>
+        <span className={`text-lg font-bold ${color}`}>{value}</span>
+      </div>
+    </div>
   )
 }

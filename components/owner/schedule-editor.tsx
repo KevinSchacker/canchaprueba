@@ -1,9 +1,11 @@
 "use client"
 
+import { useState } from "react"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { ButtonGroup } from "@/components/ui/button-group"
 import { cn } from "@/lib/utils"
+import { Copy } from "lucide-react"
 
 const DAY_LABELS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"]
 const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -13,6 +15,8 @@ export type DaySchedule = { enabled: boolean; openTime: string; closeTime: strin
 interface Props {
   days: DaySchedule[]
   onChange: (days: DaySchedule[]) => void
+  /** Otras canchas del mismo complejo para copiar horarios */
+  siblingsSchedules?: { name: string; schedules: DaySchedule[] }[]
 }
 
 /**
@@ -21,7 +25,8 @@ interface Props {
  * - Atajos: Lun-Vie, Fin de semana, Todos los días.
  * - Aplicar el horario del primer día abierto al resto con un botón.
  */
-export function ScheduleEditor({ days, onChange }: Props) {
+export function ScheduleEditor({ days, onChange, siblingsSchedules }: Props) {
+  const [copyFrom, setCopyFrom] = useState("")
   const updateDay = (i: number, patch: Partial<DaySchedule>) => {
     onChange(days.map((d, idx) => (idx === i ? { ...d, ...patch } : d)))
   }
@@ -79,6 +84,28 @@ export function ScheduleEditor({ days, onChange }: Props) {
         >
           Igualar horarios
         </Button>
+
+        {siblingsSchedules && siblingsSchedules.length > 0 && (
+          <div className="flex items-center gap-1.5">
+            <Copy className="h-3.5 w-3.5 text-muted-foreground" />
+            <select
+              value={copyFrom}
+              onChange={(e) => {
+                const val = e.target.value
+                setCopyFrom(val)
+                if (!val) return
+                const sibling = siblingsSchedules.find((s) => s.name === val)
+                if (sibling) onChange(sibling.schedules.map((d) => ({ ...d })))
+              }}
+              className="rounded-md border border-border bg-background px-2 py-1 text-xs text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+            >
+              <option value="">Igual que otra cancha…</option>
+              {siblingsSchedules.map((s) => (
+                <option key={s.name} value={s.name}>{s.name}</option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-2">

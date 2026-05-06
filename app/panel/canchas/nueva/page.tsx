@@ -3,6 +3,7 @@ import { redirect } from "next/navigation"
 import { CourtForm } from "@/components/owner/court-form"
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { buildSchedulesFromInitial } from "@/components/owner/schedule-editor"
 
 export const dynamic = "force-dynamic"
 
@@ -17,6 +18,22 @@ export default async function NewCourtPage() {
 
   const { data: sports } = await supabase.from("sports").select("id, slug, name, active").order("name")
 
+  // Cargar horarios de otras canchas para el atajo "Igual que otra cancha"
+  const { data: siblings } = await supabase
+    .from("courts")
+    .select("id, name, court_schedules(day_of_week, open_time, close_time)")
+    .eq("venue_id", venue.id)
+
+  const siblingsSchedules = (siblings ?? []).map((s) => {
+    type Sched = { day_of_week: number; open_time: string; close_time: string }
+    const raw = (s.court_schedules as unknown as Sched[]).map((cs) => ({
+      dayOfWeek: cs.day_of_week,
+      openTime: cs.open_time.slice(0, 5),
+      closeTime: cs.close_time.slice(0, 5),
+    }))
+    return { name: s.name, schedules: buildSchedulesFromInitial(raw) }
+  })
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -27,7 +44,12 @@ export default async function NewCourtPage() {
         <p className="text-sm text-muted-foreground">Configurá nombre, precio, características y horarios.</p>
       </div>
 
-      <CourtForm venueId={venue.id} sports={sports ?? []} initial={null} />
+      <CourtForm 
+        venueId={venue.id} 
+        sports={sports ?? []} 
+        initial={null} 
+        siblingsSchedules={siblingsSchedules}
+      />
     </div>
   )
 }

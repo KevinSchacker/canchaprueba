@@ -4,6 +4,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { CalendarCheck, Clock, MapPin, User } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
+import { WeeklyAgenda } from "@/components/owner/weekly-agenda"
 import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -16,7 +17,14 @@ const statusLabel: Record<string, { label: string; color: string }> = {
   no_show: { label: "No se presentó", color: "bg-destructive/10 text-destructive" },
 }
 
-export default async function OwnerBookingsPage() {
+export default async function OwnerBookingsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ view?: string }>
+}) {
+  const sp = await searchParams
+  const view = sp.view === "agenda" ? "agenda" : "lista"
+
   const supabase = await createClient()
   const {
     data: { user },
@@ -56,6 +64,7 @@ export default async function OwnerBookingsPage() {
     end_time: string
     status: string
     total_price: string | number
+    deposit_amount: string | number
     deposit_paid: boolean
     notes: string | null
     player_id: string
@@ -78,6 +87,32 @@ export default async function OwnerBookingsPage() {
         <p className="text-sm text-muted-foreground">Gestioná las reservas de tus canchas.</p>
       </div>
 
+      {/* Tabs Lista / Agenda */}
+      <div className="flex gap-1 rounded-lg border border-border bg-secondary/30 p-1 w-fit">
+        <a
+          href="/panel/reservas"
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+            view === "lista"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Lista
+        </a>
+        <a
+          href="/panel/reservas?view=agenda"
+          className={cn(
+            "rounded-md px-4 py-1.5 text-sm font-medium transition-colors",
+            view === "agenda"
+              ? "bg-background text-foreground shadow-sm"
+              : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          Agenda semanal
+        </a>
+      </div>
+
       {list.length === 0 ? (
         <Empty>
           <EmptyHeader>
@@ -88,6 +123,8 @@ export default async function OwnerBookingsPage() {
             <EmptyDescription>Cuando un jugador reserve aparecerá acá.</EmptyDescription>
           </EmptyHeader>
         </Empty>
+      ) : view === "agenda" ? (
+        <WeeklyAgenda bookings={list} />
       ) : (
         <div className="flex flex-col gap-8">
           <Section title="Próximas" items={upcoming} />
@@ -173,16 +210,21 @@ function Section({
                         <span className="font-medium text-foreground">
                           ${Number(b.deposit_amount).toLocaleString("es-AR")}
                         </span>{" "}
+                        {b.deposit_paid ? (
+                          <span className="text-primary">✓ Pagada</span>
+                        ) : (
+                          <span className="text-accent">· Pendiente</span>
+                        )}
                       </span>
                     </div>
                     <div className="flex gap-2">
                       <BookingActions bookingId={b.id} status={b.status} />
                       {b.status === "completed" && (
-                        <RateBookingDialog 
-                          bookingId={b.id} 
-                          revieweeType="player" 
-                          revieweeId={b.player_id} 
-                          title="Calificar jugador" 
+                        <RateBookingDialog
+                          bookingId={b.id}
+                          revieweeType="player"
+                          revieweeId={b.player_id}
+                          title="Calificar jugador"
                         />
                       )}
                     </div>

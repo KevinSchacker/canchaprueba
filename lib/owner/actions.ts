@@ -92,6 +92,11 @@ export type CourtScheduleInput = {
   closeTime: string // HH:mm
 }
 
+export type PriceRules = {
+  night?: { from: string; to: string; price: number } | null
+  weekend?: { price: number } | null
+}
+
 export type CourtInput = {
   id?: string
   venueId: string
@@ -105,6 +110,13 @@ export type CourtInput = {
   depositPercentage: number
   active: boolean
   schedules: CourtScheduleInput[]
+  description?: string | null
+  maxPlayers?: number | null
+  cancellationHoursBefore?: number | null
+  cancellationRefundPct?: number | null
+  maxDaysAhead?: number | null
+  minHoursAhead?: number | null
+  priceRules?: PriceRules | null
 }
 
 export async function upsertCourt(input: CourtInput) {
@@ -153,6 +165,13 @@ export async function upsertCourt(input: CourtInput) {
     slot_duration_minutes: input.slotDurationMinutes,
     deposit_percentage: input.depositPercentage,
     active: input.active,
+    description: input.description ?? null,
+    max_players: input.maxPlayers ?? null,
+    cancellation_hours_before: input.cancellationHoursBefore ?? null,
+    cancellation_refund_pct: input.cancellationRefundPct ?? null,
+    max_days_ahead: input.maxDaysAhead ?? null,
+    min_hours_ahead: input.minHoursAhead ?? null,
+    price_rules: input.priceRules ?? null,
   }
 
   let courtId: string
@@ -222,5 +241,44 @@ export async function setBookingStatus(
   if (error) return { ok: false as const, error: error.message }
   revalidatePath("/panel")
   revalidatePath("/panel/reservas")
+  return { ok: true as const }
+}
+// ============= IMAGES =============
+
+export type CourtImageInput = {
+  url: string
+  position: number
+}
+
+export async function upsertCourtImages(courtId: string, images: CourtImageInput[]) {
+  const { supabase, userId } = await requireOwner()
+
+  // Verificar ownership de la cancha
+  const { data: court, error: courtErr } = await supabase
+    .from("courts")
+    .select("id, venues!inner(owner_id)")
+    .eq("id", courtId)
+    .maybeSingle()
+
+  type CourtCheck = { id: string; venues: { owner_id: string } }
+  const c = court as unknown as CourtCheck | null
+  if (courtErr || !c || c.venues.owner_id !== userId) {
+    return { ok: false as const, error: "No tenés permisos sobre esta cancha." }
+  }
+
+  // Reemplazar imágenes
+  await supabase.from("court_images").delete().eq("court_id", courtId)
+  if (images.length > 0) {
+    const rows = images.map((img) => ({
+      court_id: courtId,
+      url: img.url,
+      position: img.position,
+    }))
+    const { error } = await supabase.from("court_images").insert(rows)
+    if (error) return { ok: false as const, error: error.message }
+  }
+
+  revalidatePath("/panel/canchas")
+  revalidatePath(`/panel/canchas/${courtId}`)
   return { ok: true as const }
 }
