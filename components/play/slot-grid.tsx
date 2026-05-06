@@ -40,7 +40,7 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
     }
   }
 
-  const totalPrice = pricePerSlot * slotsNeeded
+  const totalPrice = selectedSlots.reduce((sum, s) => sum + s.price, 0)
   const depositAmount = Math.round((totalPrice * depositPercentage) / 100)
 
   const onConfirm = () => {
@@ -123,7 +123,10 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
                       : "border-border bg-card text-foreground hover:border-primary hover:bg-primary/5",
               )}
             >
-              {s.label}
+              <span className="block">{s.label}</span>
+              {s.available && s.price !== pricePerSlot && (
+                <span className={cn("block text-[10px] font-bold opacity-80 mt-0.5", isSelected ? "text-primary-foreground" : "text-primary")}>${s.price}</span>
+              )}
             </button>
           )
         })}

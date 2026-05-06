@@ -5,6 +5,7 @@ export type Slot = {
   end: string // ISO
   label: string // HH:mm
   available: boolean
+  price: number
   reason?: "past" | "booked" | "fixed" | "blocked"
 }
 
@@ -22,7 +23,7 @@ export async function getAvailableSlots(courtId: string, date: string): Promise<
 
   const { data: court, error: courtError } = await supabase
     .from("courts")
-    .select("id, slot_duration_minutes")
+    .select("id, slot_duration_minutes, price_per_slot, price_rules")
     .eq("id", courtId)
     .maybeSingle()
 
@@ -100,11 +101,35 @@ export async function getAvailableSlots(courtId: string, date: string): Promise<
       if (inPast) reason = "past"
       else if (overlap) reason = overlap.kind === "fixed" ? "fixed" : overlap.kind === "blocked" ? "blocked" : "booked"
 
+      let slotPrice = Number(court.price_per_slot)
+      const rules = court.price_rules as any || {}
+      
+      const isWeekend = dow === 0 || dow === 6
+      if (isWeekend && rules.weekend?.price) {
+        slotPrice = Number(rules.weekend.price)
+      }
+
+      if (rules.night?.from && rules.night?.to && rules.night?.price) {
+        const [fromH, fromM] = rules.night.from.split(":").map(Number)
+        const [toH, toM] = rules.night.to.split(":").map(Number)
+        
+        let nightFromTime = new Date(year, month - 1, day, fromH, fromM, 0).getTime()
+        let nightToTime = new Date(year, month - 1, day, toH, toM, 0).getTime()
+        if (nightToTime < nightFromTime) nightToTime += 24 * 60 * 60 * 1000 // handle crosses midnight
+        
+        // If slot falls entirely within night range, or mostly within night range.
+        // Simplified: if slot start time is >= nightFromTime AND < nightToTime
+        if (slotStart >= nightFromTime && slotStart < nightToTime) {
+          slotPrice = Number(rules.night.price)
+        }
+      }
+
       slots.push({
         start: new Date(slotStart).toISOString(),
         end: new Date(slotEnd).toISOString(),
         label,
         available: !overlap && !inPast,
+        price: slotPrice,
         reason,
       })
 
