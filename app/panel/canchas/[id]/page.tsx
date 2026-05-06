@@ -62,7 +62,8 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
 
   const siblingsSchedules = (siblings ?? []).map((s) => {
     type Sched = { day_of_week: number; open_time: string; close_time: string }
-    const courtSchedules = (s.court_schedules as unknown as Sched[]) || []
+    const csRaw = s.court_schedules as unknown
+    const courtSchedules: Sched[] = Array.isArray(csRaw) ? csRaw : (csRaw ? [csRaw as Sched] : [])
     
     const raw = courtSchedules.map((cs) => ({
       dayOfWeek: cs.day_of_week,
