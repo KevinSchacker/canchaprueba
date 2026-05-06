@@ -10,6 +10,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { CancelBookingButton } from "@/components/play/cancel-booking-button"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
 import { cn } from "@/lib/utils"
+import { CalendarCheck, Clock, MapPin } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
