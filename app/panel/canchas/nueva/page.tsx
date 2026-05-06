@@ -24,6 +24,10 @@ export default async function NewCourtPage() {
     .select("id, name, court_schedules(day_of_week, open_time, close_time)")
     .eq("venue_id", venue.id)
 
+  // Next.js throws if we pass `undefined` to Client Components.
+  // This helper completely removes any undefined values from the object tree.
+  const sanitizeProps = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj))
+
   const siblingsSchedules = (siblings ?? []).map((s) => {
     type Sched = { day_of_week: number; open_time: string; close_time: string }
     const courtSchedules = (s.court_schedules as unknown as Sched[]) || []
@@ -47,9 +51,9 @@ export default async function NewCourtPage() {
 
       <CourtForm 
         venueId={venue.id} 
-        sports={sports ?? []} 
+        sports={sanitizeProps(sports ?? [])} 
         initial={null} 
-        siblingsSchedules={siblingsSchedules}
+        siblingsSchedules={sanitizeProps(siblingsSchedules)}
       />
     </div>
   )

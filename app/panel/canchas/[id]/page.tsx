@@ -84,6 +84,10 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
     return isNaN(n) ? fallback : n
   }
 
+  // Next.js throws if we pass `undefined` to Client Components.
+  // This helper completely removes any undefined values from the object tree.
+  const sanitizeProps = <T,>(obj: T): T => JSON.parse(JSON.stringify(obj))
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-2">
@@ -113,9 +117,9 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
 
       <CourtForm
         venueId={venue.id}
-        sports={sports ?? []}
-        siblingsSchedules={siblingsSchedules}
-        initial={{
+        sports={sanitizeProps(sports ?? [])}
+        siblingsSchedules={sanitizeProps(siblingsSchedules)}
+        initial={sanitizeProps({
           id: court.id,
           name: court.name || "",
           surface: court.surface || "",
@@ -140,15 +144,15 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
           nightPriceEnabled: !!(priceRules?.night),
           nightPriceFrom: priceRules?.night?.from || "20:00",
           nightPriceTo: priceRules?.night?.to || "23:00",
-          nightPrice: priceRules?.night?.price ? safeNumber(priceRules.night.price, null) : null,
+          nightPrice: priceRules?.night?.price !== undefined && priceRules?.night?.price !== null ? safeNumber(priceRules.night.price, null) : null,
           weekendPriceEnabled: !!(priceRules?.weekend),
-          weekendPrice: priceRules?.weekend?.price ? safeNumber(priceRules.weekend.price, null) : null,
+          weekendPrice: priceRules?.weekend?.price !== undefined && priceRules?.weekend?.price !== null ? safeNumber(priceRules.weekend.price, null) : null,
           images: (images || []).map((img) => ({ 
             id: img.id, 
             url: img.url, 
             position: img.position || 0 
           })),
-        }}
+        })}
       />
     </div>
   )
