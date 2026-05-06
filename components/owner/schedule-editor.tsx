@@ -160,4 +160,5 @@ export function ScheduleEditor({ days, onChange, siblingsSchedules }: Props) {
       </div>
     </div>
   )
+}
 
