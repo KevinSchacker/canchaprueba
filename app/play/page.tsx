@@ -76,7 +76,7 @@ export default async function PlayPage({
   const { data: activeSubs } = await adminAuth
     .from("owner_subscriptions")
     .select("owner_id")
-    .in("status", ["active", "trialing"])
+    .in("status", ["active", "trial"])
 
   const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
 
