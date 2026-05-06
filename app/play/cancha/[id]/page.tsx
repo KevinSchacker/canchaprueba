@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, MapPin, Phone, Sun, Lightbulb, Clock, Users, Info, ShieldAlert } from "lucide-react"
@@ -65,7 +66,8 @@ export default async function CourtDetailPage({
 
   if (!c || !c.active || !c.venues?.active) notFound()
 
-  const { data: sub } = await supabase
+  const adminAuth = createAdminClient()
+  const { data: sub } = await adminAuth
     .from("owner_subscriptions")
     .select("status")
     .eq("owner_id", c.venues.owner_id)

@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Logo } from "@/components/brand/logo"
 import { CalendarCheck, MapPin, Search, Wallet, Users, Trophy } from "lucide-react"
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { HeroLiveCourts } from "@/components/play/hero-live-courts"
 
@@ -29,16 +30,17 @@ export default async function HomePage() {
     `)
     .eq("active", true)
 
-  const { data: inactiveSubs } = await supabase
+  const adminAuth = createAdminClient()
+  const { data: activeSubs } = await adminAuth
     .from("owner_subscriptions")
     .select("owner_id")
-    .in("status", ["past_due", "cancelled", "paused"])
+    .in("status", ["active", "trialing"])
 
-  const inactiveOwnerIds = new Set((inactiveSubs ?? []).map((s) => s.owner_id))
+  const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
 
   type CourtRaw = { id: string; name: string; price_per_slot: string | number; venues: { name: string; city: string; latitude: number | null; longitude: number | null; active: boolean; owner_id: string }; sports: { name: string } }
   const courtsRaw = ((courtsData ?? []) as unknown as CourtRaw[])
-    .filter(c => c.venues.active && !inactiveOwnerIds.has(c.venues.owner_id))
+    .filter(c => c.venues.active && activeOwnerIds.has(c.venues.owner_id))
     .map(c => ({
       id: c.id,
       name: c.name,

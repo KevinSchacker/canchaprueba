@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
@@ -70,11 +71,12 @@ export default async function PlayPage({
     venues: { id: string; name: string; city: string; cover_image_url: string | null; active: boolean; owner_id: string; latitude: number | null; longitude: number | null }
   }
 
-  // Cargar dueños con suscripción ACTIVA
-  const { data: activeSubs } = await supabase
+  // Cargar dueños con suscripción ACTIVA (Usamos el cliente admin para bypass RLS de esta tabla)
+  const adminAuth = createAdminClient()
+  const { data: activeSubs } = await adminAuth
     .from("owner_subscriptions")
     .select("owner_id")
-    .eq("status", "active")
+    .in("status", ["active", "trialing"])
 
   const activeOwnerIds = new Set((activeSubs ?? []).map((s) => s.owner_id))
 
