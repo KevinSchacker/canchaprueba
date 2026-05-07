@@ -83,6 +83,17 @@ export default async function OwnerBookingsPage({
     profileMap[p.id] = { full_name: p.full_name, phone: p.phone }
   }
 
+  // Obtener emails como fallback para jugadores sin nombre
+  const emailMap: Record<string, string> = {}
+  if (playerIds.length > 0) {
+    const { data: { users } } = await adminDb.auth.admin.listUsers({ perPage: 1000 })
+    for (const u of (users ?? [])) {
+      if (playerIds.includes(u.id)) {
+        emailMap[u.id] = u.email ?? ""
+      }
+    }
+  }
+
   const courtMap: Record<string, string> = {}
   for (const c of (courts ?? [])) {
     courtMap[c.id] = c.name
@@ -129,7 +140,7 @@ export default async function OwnerBookingsPage({
 
   const list: Row[] = bookingList.map((b: any) => ({
     ...b,
-    playerName: profileMap[b.player_id]?.full_name ?? "Sin nombre",
+    playerName: profileMap[b.player_id]?.full_name || emailMap[b.player_id] || "Sin nombre",
     playerPhone: profileMap[b.player_id]?.phone ?? null,
     courtName: courtMap[b.court_id] ?? "Cancha",
   }))

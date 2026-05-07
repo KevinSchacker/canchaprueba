@@ -1,4 +1,5 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { redirect } from "next/navigation"
 import { PlayHeader } from "@/components/play/play-header"
 import { BottomNav } from "@/components/play/bottom-nav"
@@ -33,16 +34,18 @@ export default async function EditProfilePage() {
     
     if (!user) return
 
-    const fullName = formData.get("fullName") as string
-    const city = formData.get("city") as string
-    const phone = formData.get("phone") as string
+    const fullName = (formData.get("fullName") as string).trim()
+    const city = (formData.get("city") as string).trim()
+    const phone = (formData.get("phone") as string).trim()
 
-    await supabaseServer
+    // Usar admin para garantizar que el update siempre funcione
+    const adminDb = createAdminClient()
+    await adminDb
       .from("profiles")
       .update({
-        full_name: fullName,
-        city: city,
-        phone: phone,
+        full_name: fullName || null,
+        city: city || null,
+        phone: phone || null,
       })
       .eq("id", user.id)
 
