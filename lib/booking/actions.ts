@@ -8,6 +8,7 @@ type CreateBookingInput = {
   courtId: string
   startTime: string // ISO
   endTime: string // ISO
+  totalPrice: number
 }
 
 export async function createBooking(input: CreateBookingInput) {
@@ -30,7 +31,7 @@ export async function createBooking(input: CreateBookingInput) {
     return { ok: false as const, error: "La cancha no está disponible." }
   }
 
-  const totalPrice = Number(court.price_per_slot)
+  const totalPrice = input.totalPrice
   const depositAmount = Math.round((totalPrice * court.deposit_percentage) / 100)
 
   const { data, error } = await supabase

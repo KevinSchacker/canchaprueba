@@ -51,6 +51,7 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
         courtId,
         startTime: selectedSlots[0].start,
         endTime: selectedSlots[selectedSlots.length - 1].end,
+        totalPrice,
       })
       if (!res.ok) {
         setError(res.error)
