@@ -8,6 +8,7 @@ import { CourtCard } from "@/components/play/court-card"
 import { ClosestCourt } from "@/components/play/closest-court"
 import { FullPCFooter } from "@/components/brand/fullpc-footer"
 import { BottomNav } from "@/components/play/bottom-nav"
+import { PlayHeader } from "@/components/play/play-header"
 import { Empty, EmptyContent, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { MapPin } from "lucide-react"
 
@@ -92,12 +93,7 @@ export default async function PlayPage({
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <Logo />
-          <LogoutButton />
-        </div>
-      </header>
+      <PlayHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
         <div className="mb-6 flex flex-col gap-1">

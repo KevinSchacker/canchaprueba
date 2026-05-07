@@ -94,11 +94,11 @@ export function HeroLiveCourts({ courts }: Props) {
         <div className="flex items-center gap-2">
           <Search className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
           <span className="text-sm text-muted-foreground">
-            {loading ? "Buscando canchas…" : `${cityLabel}, hoy`}
+            {loading ? "Buscando canchas…" : `${cityLabel}`}
           </span>
         </div>
         <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-          En vivo
+          Canchas
         </span>
       </div>
 
@@ -118,7 +118,7 @@ export function HeroLiveCourts({ courts }: Props) {
                 ${Number(c.price).toLocaleString("es-AR")}
               </span>
               <span className="rounded-full bg-primary/10 px-2 py-1 text-xs font-medium text-primary">
-                Libre
+                Ver turnos
               </span>
             </div>
           </div>

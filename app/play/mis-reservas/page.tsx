@@ -5,6 +5,7 @@ import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { FullPCFooter } from "@/components/brand/fullpc-footer"
 import { BottomNav } from "@/components/play/bottom-nav"
+import { PlayHeader } from "@/components/play/play-header"
 import { Card } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { CancelBookingButton } from "@/components/play/cancel-booking-button"
@@ -64,12 +65,7 @@ export default async function MyBookingsPage() {
 
   return (
     <div className="flex min-h-svh flex-col bg-background">
-      <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
-        <div className="mx-auto flex max-w-3xl items-center justify-between px-4 py-3">
-          <Logo />
-          <LogoutButton />
-        </div>
-      </header>
+      <PlayHeader />
 
       <main className="mx-auto w-full max-w-3xl flex-1 px-4 py-6">
         <h1 className="mb-6 text-balance text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
