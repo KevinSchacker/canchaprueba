@@ -58,6 +58,27 @@ export default async function OwnerBookingsPage({
     .eq("courts.venue_id", venue.id)
     .order("start_time", { ascending: true })
 
+  const playerIds = Array.from(new Set((bookings ?? []).map((b) => b.player_id)))
+  const { data: playerReviewsData } = await supabase
+    .from("reviews")
+    .select("player_id, rating, reviewer_id, booking_id")
+    .eq("reviewee_type", "player")
+    .in("player_id", playerIds.length > 0 ? playerIds : ["00000000-0000-0000-0000-000000000000"])
+
+  const playerReviews = playerReviewsData ?? []
+
+  // Calcular reputación por jugador
+  const playerReputation: Record<string, { average: number; count: number }> = {}
+  for (const pid of playerIds) {
+    const revs = playerReviews.filter((r) => r.player_id === pid)
+    if (revs.length > 0) {
+      playerReputation[pid] = {
+        average: revs.reduce((acc, r) => acc + r.rating, 0) / revs.length,
+        count: revs.length,
+      }
+    }
+  }
+
   type Row = {
     id: string
     start_time: string
@@ -127,8 +148,8 @@ export default async function OwnerBookingsPage({
         <WeeklyAgenda bookings={list} />
       ) : (
         <div className="flex flex-col gap-8">
-          <Section title="Próximas" items={upcoming} />
-          <Section title="Anteriores" items={past} muted />
+          <Section title="Próximas" items={upcoming} playerReputation={playerReputation} playerReviews={playerReviews} currentUserId={user!.id} />
+          <Section title="Anteriores" items={past} muted playerReputation={playerReputation} playerReviews={playerReviews} currentUserId={user!.id} />
         </div>
       )}
     </div>
@@ -139,6 +160,9 @@ function Section({
   title,
   items,
   muted = false,
+  playerReputation,
+  playerReviews,
+  currentUserId,
 }: {
   title: string
   items: Array<{
@@ -154,6 +178,9 @@ function Section({
     profiles: { full_name: string | null; phone: string | null } | null
   }>
   muted?: boolean
+  playerReputation: Record<string, { average: number; count: number }>
+  playerReviews: Array<{ player_id: string; rating: number; reviewer_id: string; booking_id: string }>
+  currentUserId: string
 }) {
   if (items.length === 0) return null
   return (
@@ -174,10 +201,17 @@ function Section({
                 <CardContent className="flex flex-col gap-3 p-4">
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col">
-                      <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
-                        <User className="h-4 w-4 text-accent" />
-                        {b.profiles?.full_name ?? "Jugador"}
-                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
+                          <User className="h-4 w-4 text-accent" />
+                          {b.profiles?.full_name ?? "Jugador"}
+                        </span>
+                        {playerReputation[b.player_id] && (
+                          <span className="flex items-center gap-0.5 text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
+                            ★ {playerReputation[b.player_id].average.toFixed(1)}
+                          </span>
+                        )}
+                      </div>
                       {b.profiles?.phone && (
                         <span className="text-xs text-muted-foreground">{b.profiles.phone}</span>
                       )}
@@ -219,14 +253,24 @@ function Section({
                     </div>
                     <div className="flex gap-2">
                       <BookingActions bookingId={b.id} status={b.status} />
-                      {b.status === "completed" && (
-                        <RateBookingDialog
-                          bookingId={b.id}
-                          revieweeType="player"
-                          revieweeId={b.player_id}
-                          title="Calificar jugador"
-                        />
-                      )}
+                      {b.status === "completed" && (() => {
+                        const hasRated = playerReviews.some((r) => r.booking_id === b.id && r.reviewer_id === currentUserId)
+                        if (hasRated) {
+                          return (
+                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium text-muted-foreground bg-secondary rounded-md">
+                              ✓ Calificado
+                            </span>
+                          )
+                        }
+                        return (
+                          <RateBookingDialog
+                            bookingId={b.id}
+                            revieweeType="player"
+                            revieweeId={b.player_id}
+                            title="Calificar jugador"
+                          />
+                        )
+                      })()}
                     </div>
                   </div>
                 </CardContent>
