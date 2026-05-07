@@ -1,9 +1,9 @@
 import { createClient } from "@/lib/supabase/server"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { CalendarCheck, Clock, MapPin, User } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
-import { createAdminClient } from "@/lib/supabase/admin"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
 import { WeeklyAgenda } from "@/components/owner/weekly-agenda"
 import { cn } from "@/lib/utils"
@@ -48,34 +48,64 @@ export default async function OwnerBookingsPage({
   }
 
   const adminDb = createAdminClient()
-  const { data: bookings } = await adminDb
-    .from("bookings")
-    .select(
-      `
-      id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
-      courts!inner ( id, name, venue_id ),
-      player:player_id ( full_name, phone )
-    `,
-    )
-    .eq("courts.venue_id", venue.id)
-    .order("start_time", { ascending: true })
 
-  const playerIds = Array.from(new Set((bookings ?? []).map((b) => b.player_id)))
-  const { data: playerReviewsData } = await adminDb
-    .from("reviews")
-    .select("player_id, rating, reviewer_id, booking_id")
-    .eq("reviewee_type", "player")
-    .in("player_id", playerIds.length > 0 ? playerIds : ["00000000-0000-0000-0000-000000000000"])
+  // 1. Buscar las canchas del complejo
+  const { data: courts } = await adminDb
+    .from("courts")
+    .select("id, name")
+    .eq("venue_id", venue.id)
+
+  const courtIds = (courts ?? []).map((c) => c.id)
+
+  // 2. Buscar reservas de esas canchas
+  const { data: rawBookings } = courtIds.length > 0
+    ? await adminDb
+        .from("bookings")
+        .select("id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id, court_id")
+        .in("court_id", courtIds)
+        .order("start_time", { ascending: true })
+    : { data: [] as any[] }
+
+  const bookingList = rawBookings ?? []
+
+  // 3. Buscar perfiles de todos los jugadores únicos
+  const playerIds = Array.from(new Set(bookingList.map((b: any) => b.player_id as string)))
+
+  const { data: playerProfiles } = playerIds.length > 0
+    ? await adminDb
+        .from("profiles")
+        .select("id, full_name, phone")
+        .in("id", playerIds)
+    : { data: [] as any[] }
+
+  const profileMap: Record<string, { full_name: string | null; phone: string | null }> = {}
+  for (const p of (playerProfiles ?? [])) {
+    profileMap[p.id] = { full_name: p.full_name, phone: p.phone }
+  }
+
+  const courtMap: Record<string, string> = {}
+  for (const c of (courts ?? [])) {
+    courtMap[c.id] = c.name
+  }
+
+  // 4. Buscar reviews de los jugadores
+  const { data: playerReviewsData } = playerIds.length > 0
+    ? await adminDb
+        .from("reviews")
+        .select("player_id, rating, reviewer_id, booking_id")
+        .eq("reviewee_type", "player")
+        .in("player_id", playerIds)
+    : { data: [] as any[] }
 
   const playerReviews = playerReviewsData ?? []
 
-  // Calcular reputación por jugador
+  // 5. Calcular reputación por jugador
   const playerReputation: Record<string, { average: number; count: number }> = {}
   for (const pid of playerIds) {
-    const revs = playerReviews.filter((r) => r.player_id === pid)
+    const revs = playerReviews.filter((r: any) => r.player_id === pid)
     if (revs.length > 0) {
       playerReputation[pid] = {
-        average: revs.reduce((acc, r) => acc + r.rating, 0) / revs.length,
+        average: revs.reduce((acc: number, r: any) => acc + r.rating, 0) / revs.length,
         count: revs.length,
       }
     }
@@ -91,10 +121,18 @@ export default async function OwnerBookingsPage({
     deposit_paid: boolean
     notes: string | null
     player_id: string
-    courts: { id: string; name: string; venue_id: string }
-    player: any
+    court_id: string
+    playerName: string
+    playerPhone: string | null
+    courtName: string
   }
-  const list = (bookings ?? []) as unknown as Row[]
+
+  const list: Row[] = bookingList.map((b: any) => ({
+    ...b,
+    playerName: profileMap[b.player_id]?.full_name ?? "Sin nombre",
+    playerPhone: profileMap[b.player_id]?.phone ?? null,
+    courtName: courtMap[b.court_id] ?? "Cancha",
+  }))
 
   const upcoming = list.filter(
     (b) => new Date(b.start_time) >= new Date() && b.status !== "cancelled",
@@ -147,7 +185,7 @@ export default async function OwnerBookingsPage({
           </EmptyHeader>
         </Empty>
       ) : view === "agenda" ? (
-        <WeeklyAgenda bookings={list} />
+        <WeeklyAgenda bookings={list as any} />
       ) : (
         <div className="flex flex-col gap-8">
           <Section title="Próximas" items={upcoming} playerReputation={playerReputation} playerReviews={playerReviews} currentUserId={user!.id} />
@@ -176,8 +214,10 @@ function Section({
     deposit_amount: string | number
     deposit_paid: boolean
     player_id: string
-    courts: { id: string; name: string }
-    player: any
+    court_id: string
+    playerName: string
+    playerPhone: string | null
+    courtName: string
   }>
   muted?: boolean
   playerReputation: Record<string, { average: number; count: number }>
@@ -197,7 +237,6 @@ function Section({
             end.getHours(),
           ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
           const status = statusLabel[b.status] ?? statusLabel.pending
-          const prof = Array.isArray(b.player) ? b.player[0] : b.player
           return (
             <li key={b.id}>
               <Card className={cn(muted && "opacity-80")}>
@@ -207,7 +246,7 @@ function Section({
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
                           <User className="h-4 w-4 text-accent" />
-                          {prof?.full_name ?? "Jugador"}
+                          {b.playerName}
                         </span>
                         {playerReputation[b.player_id] && (
                           <span className="flex items-center gap-0.5 text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
@@ -215,8 +254,8 @@ function Section({
                           </span>
                         )}
                       </div>
-                      {prof?.phone && (
-                        <span className="text-xs text-muted-foreground">{prof.phone}</span>
+                      {b.playerPhone && (
+                        <span className="text-xs text-muted-foreground">{b.playerPhone}</span>
                       )}
                     </div>
                     <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.color)}>
@@ -231,7 +270,7 @@ function Section({
                       <Clock className="h-3.5 w-3.5 text-accent" /> {timeLabel}
                     </span>
                     <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5 text-accent" /> {b.courts.name}
+                      <MapPin className="h-3.5 w-3.5 text-accent" /> {b.courtName}
                     </span>
                   </div>
                   <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
