@@ -28,7 +28,7 @@ export default async function ProfilePage() {
     .from("reviews")
     .select(`
       id, rating, comment, created_at,
-      profiles!reviews_reviewer_id_fkey(full_name)
+      courts ( name, venues ( name ) )
     `)
     .eq("reviewee_type", "player")
     .eq("player_id", user.id)
@@ -78,7 +78,9 @@ export default async function ProfilePage() {
                   {reviews.map((r: any) => (
                     <li key={r.id} className="flex flex-col gap-1 border-b border-border pb-4 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between">
-                        <span className="font-medium text-sm">{r.profiles?.full_name ?? "Dueño"}</span>
+                        <span className="font-medium text-sm">
+                          {r.courts?.venues?.name ?? "Complejo"} - {r.courts?.name ?? "Cancha"}
+                        </span>
                         <div className="flex items-center gap-1 text-accent">
                           {Array.from({ length: 5 }).map((_, i) => (
                             <Star key={i} className={`h-3 w-3 ${i < r.rating ? "fill-accent" : "text-muted opacity-50"}`} />

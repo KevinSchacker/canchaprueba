@@ -84,6 +84,16 @@ export default async function CourtDetailPage({
   const slots = await getAvailableSlots(c.id, date)
   const price = Number(c.price_per_slot)
 
+  const { data: courtReviews } = await supabase
+    .from("reviews")
+    .select("rating")
+    .eq("reviewee_type", "court")
+    .eq("court_id", c.id)
+
+  const courtAvgRating = courtReviews && courtReviews.length > 0
+    ? (courtReviews.reduce((acc, r) => acc + r.rating, 0) / courtReviews.length).toFixed(1)
+    : null
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
@@ -146,9 +156,16 @@ export default async function CourtDetailPage({
 
         {/* Info */}
         <div className="mb-6 flex flex-col gap-2">
-          <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
-            {c.venues.name}
-          </h1>
+          <div className="flex items-center gap-3">
+            <h1 className="text-balance text-2xl font-semibold tracking-tight text-foreground md:text-3xl">
+              {c.venues.name}
+            </h1>
+            {courtAvgRating && (
+              <span className="flex items-center gap-1 text-sm font-medium text-amber-500 bg-amber-500/10 px-2 py-1 rounded-full">
+                ★ {courtAvgRating}
+              </span>
+            )}
+          </div>
           <p className="text-base text-muted-foreground">
             {c.sports?.name ?? "Pádel"} · {c.name}
           </p>

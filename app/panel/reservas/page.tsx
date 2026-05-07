@@ -90,7 +90,7 @@ export default async function OwnerBookingsPage({
     notes: string | null
     player_id: string
     courts: { id: string; name: string; venue_id: string }
-    profiles: { full_name: string | null; phone: string | null } | null
+    profiles: any
   }
   const list = (bookings ?? []) as unknown as Row[]
 
@@ -175,7 +175,7 @@ function Section({
     deposit_paid: boolean
     player_id: string
     courts: { id: string; name: string }
-    profiles: { full_name: string | null; phone: string | null } | null
+    profiles: any
   }>
   muted?: boolean
   playerReputation: Record<string, { average: number; count: number }>
@@ -195,6 +195,7 @@ function Section({
             end.getHours(),
           ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
           const status = statusLabel[b.status] ?? statusLabel.pending
+          const prof = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles
           return (
             <li key={b.id}>
               <Card className={cn(muted && "opacity-80")}>
@@ -204,7 +205,7 @@ function Section({
                       <div className="flex items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
                           <User className="h-4 w-4 text-accent" />
-                          {b.profiles?.full_name ?? "Jugador"}
+                          {prof?.full_name ?? "Jugador"}
                         </span>
                         {playerReputation[b.player_id] && (
                           <span className="flex items-center gap-0.5 text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
@@ -212,8 +213,8 @@ function Section({
                           </span>
                         )}
                       </div>
-                      {b.profiles?.phone && (
-                        <span className="text-xs text-muted-foreground">{b.profiles.phone}</span>
+                      {prof?.phone && (
+                        <span className="text-xs text-muted-foreground">{prof.phone}</span>
                       )}
                     </div>
                     <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.color)}>
