@@ -68,8 +68,14 @@ export default async function OwnerBookingsPage({
 
   const bookingList = rawBookings ?? []
 
-  // 3. Buscar perfiles de todos los jugadores únicos
-  const playerIds = Array.from(new Set(bookingList.map((b: any) => b.player_id as string)))
+  // 3. Buscar perfiles de todos los jugadores únicos (filtrando nulls)
+  const playerIds = Array.from(
+    new Set(
+      bookingList
+        .map((b: any) => b.player_id as string | null)
+        .filter((id): id is string => id !== null && id !== undefined)
+    )
+  )
 
   const { data: playerProfiles } = playerIds.length > 0
     ? await adminDb
