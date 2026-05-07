@@ -1,5 +1,5 @@
-import { createClient } from "@/lib/supabase/server"
 import { redirect } from "next/navigation"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { BottomNav } from "@/components/play/bottom-nav"
@@ -24,7 +24,8 @@ export default async function ProfilePage() {
     .eq("id", user.id)
     .maybeSingle()
 
-  const { data: reviews } = await supabase
+  const adminDb = createAdminClient()
+  const { data: reviews } = await adminDb
     .from("reviews")
     .select(`
       id, rating, comment, created_at,
