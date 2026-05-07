@@ -52,7 +52,7 @@ export default async function OwnerBookingsPage({
       `
       id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
       courts!inner ( id, name, venue_id ),
-      profiles!bookings_player_id_fkey ( full_name, phone )
+      profiles:player_id ( full_name, phone )
     `,
     )
     .eq("courts.venue_id", venue.id)
