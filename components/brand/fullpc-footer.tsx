@@ -14,10 +14,6 @@ export function FullPCFooter() {
           src="https://www.fullpc.com.ar/favicom.png"
           alt="FullPC"
           className="h-4 w-auto"
-          onError={(e) => { 
-            e.currentTarget.src = 'https://www.fullpc.com.ar/favicon.png'; 
-            e.currentTarget.onerror = null; 
-          }}
         />
       </a>
     </footer>
