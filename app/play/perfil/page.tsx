@@ -1,5 +1,6 @@
-import { redirect } from "next/navigation"
+import { createClient } from "@/lib/supabase/server"
 import { createAdminClient } from "@/lib/supabase/admin"
+import { redirect } from "next/navigation"
 import { Logo } from "@/components/brand/logo"
 import { LogoutButton } from "@/components/auth/logout-button"
 import { BottomNav } from "@/components/play/bottom-nav"
