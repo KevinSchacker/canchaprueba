@@ -15,8 +15,15 @@ type BookingSlot = {
   total_price: string | number
   deposit_amount?: string | number
   deposit_paid: boolean
-  courts: { id: string; name: string }
-  profiles: { full_name: string | null; phone: string | null } | null
+  player_id?: string | null
+  court_id?: string
+  // Estructura nueva (flat)
+  courtName?: string
+  playerName?: string
+  playerPhone?: string | null
+  // Estructura vieja (join), por retrocompatibilidad
+  courts?: { id: string; name: string }
+  profiles?: { full_name: string | null; phone: string | null } | null
 }
 
 interface Props {
@@ -191,9 +198,9 @@ export function WeeklyAgenda({ bookings }: Props) {
                         style={{ top: `${topPct}%`, height: `${heightPct}%`, minHeight: "24px" }}
                       >
                         <p className={cn("truncate text-[10px] font-semibold leading-tight", colors.text)}>
-                          {b.profiles?.full_name?.split(" ")[0] ?? "Jugador"}
+                          {(b.playerName ?? b.profiles?.full_name ?? "Jugador").split(" ")[0]}
                         </p>
-                        <p className="truncate text-[9px] text-muted-foreground">{timeLabel} · {b.courts.name}</p>
+                        <p className="truncate text-[9px] text-muted-foreground">{timeLabel} · {b.courtName ?? b.courts?.name ?? "Cancha"}</p>
                       </button>
                     )
                   })}
@@ -211,10 +218,10 @@ export function WeeklyAgenda({ bookings }: Props) {
             <div>
               <p className="flex items-center gap-1.5 text-sm font-semibold text-foreground">
                 <User className="h-4 w-4 text-accent" />
-                {selected.profiles?.full_name ?? "Jugador"}
+                {selected.playerName ?? selected.profiles?.full_name ?? "Jugador"}
               </p>
-              {selected.profiles?.phone && (
-                <p className="ml-5.5 text-xs text-muted-foreground">{selected.profiles.phone}</p>
+              {(selected.playerPhone ?? selected.profiles?.phone) && (
+                <p className="ml-5.5 text-xs text-muted-foreground">{selected.playerPhone ?? selected.profiles?.phone}</p>
               )}
             </div>
             <button
@@ -238,7 +245,7 @@ export function WeeklyAgenda({ bookings }: Props) {
               {String(new Date(selected.end_time).getHours()).padStart(2, "0")}:
               {String(new Date(selected.end_time).getMinutes()).padStart(2, "0")}
             </span>
-            <span className="font-medium text-foreground">{selected.courts.name}</span>
+            <span className="font-medium text-foreground">{selected.courtName ?? selected.courts?.name ?? "Cancha"}</span>
           </div>
           <div className="mt-2 flex items-center gap-3 text-xs">
             <span className="flex items-center gap-1 text-muted-foreground">
