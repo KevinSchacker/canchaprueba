@@ -54,7 +54,7 @@ export default async function OwnerBookingsPage({
       `
       id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
       courts!inner ( id, name, venue_id ),
-      profiles!player_id ( full_name, phone )
+      player:player_id ( full_name, phone )
     `,
     )
     .eq("courts.venue_id", venue.id)
@@ -92,7 +92,7 @@ export default async function OwnerBookingsPage({
     notes: string | null
     player_id: string
     courts: { id: string; name: string; venue_id: string }
-    profiles: any
+    player: any
   }
   const list = (bookings ?? []) as unknown as Row[]
 
@@ -177,7 +177,7 @@ function Section({
     deposit_paid: boolean
     player_id: string
     courts: { id: string; name: string }
-    profiles: any
+    player: any
   }>
   muted?: boolean
   playerReputation: Record<string, { average: number; count: number }>
@@ -197,7 +197,7 @@ function Section({
             end.getHours(),
           ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
           const status = statusLabel[b.status] ?? statusLabel.pending
-          const prof = Array.isArray(b.profiles) ? b.profiles[0] : b.profiles
+          const prof = Array.isArray(b.player) ? b.player[0] : b.player
           return (
             <li key={b.id}>
               <Card className={cn(muted && "opacity-80")}>

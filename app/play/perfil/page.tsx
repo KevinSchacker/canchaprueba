@@ -29,7 +29,7 @@ export default async function ProfilePage() {
     .from("reviews")
     .select(`
       id, rating, comment, created_at,
-      bookings ( courts ( name, venues ( name ) ) )
+      booking:booking_id ( courts ( name, venues ( name ) ) )
     `)
     .eq("reviewee_type", "player")
     .eq("player_id", user.id)
@@ -81,7 +81,7 @@ export default async function ProfilePage() {
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm">
                           {(() => {
-                            const b = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings
+                            const b = Array.isArray(r.booking) ? r.booking[0] : r.booking
                             const vName = b?.courts?.venues?.name ?? "Complejo"
                             const cName = b?.courts?.name ?? "Cancha"
                             return `${vName} - ${cName}`
