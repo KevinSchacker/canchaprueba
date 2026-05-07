@@ -54,14 +54,14 @@ export default async function OwnerBookingsPage({
       `
       id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
       courts!inner ( id, name, venue_id ),
-      profiles ( full_name, phone )
+      profiles!player_id ( full_name, phone )
     `,
     )
     .eq("courts.venue_id", venue.id)
     .order("start_time", { ascending: true })
 
   const playerIds = Array.from(new Set((bookings ?? []).map((b) => b.player_id)))
-  const { data: playerReviewsData } = await supabase
+  const { data: playerReviewsData } = await adminDb
     .from("reviews")
     .select("player_id, rating, reviewer_id, booking_id")
     .eq("reviewee_type", "player")
