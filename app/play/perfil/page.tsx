@@ -79,7 +79,12 @@ export default async function ProfilePage() {
                     <li key={r.id} className="flex flex-col gap-1 border-b border-border pb-4 last:border-0 last:pb-0">
                       <div className="flex items-center justify-between">
                         <span className="font-medium text-sm">
-                          {r.bookings?.courts?.venues?.name ?? "Complejo"} - {r.bookings?.courts?.name ?? "Cancha"}
+                          {(() => {
+                            const b = Array.isArray(r.bookings) ? r.bookings[0] : r.bookings
+                            const vName = b?.courts?.venues?.name ?? "Complejo"
+                            const cName = b?.courts?.name ?? "Cancha"
+                            return `${vName} - ${cName}`
+                          })()}
                         </span>
                         <div className="flex items-center gap-1 text-accent">
                           {Array.from({ length: 5 }).map((_, i) => (

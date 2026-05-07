@@ -3,6 +3,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
 import { CalendarCheck, Clock, MapPin, User } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
+import { createAdminClient } from "@/lib/supabase/admin"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
 import { WeeklyAgenda } from "@/components/owner/weekly-agenda"
 import { cn } from "@/lib/utils"
@@ -46,13 +47,14 @@ export default async function OwnerBookingsPage({
     )
   }
 
-  const { data: bookings } = await supabase
+  const adminDb = createAdminClient()
+  const { data: bookings } = await adminDb
     .from("bookings")
     .select(
       `
       id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id,
       courts!inner ( id, name, venue_id ),
-      profiles:player_id ( full_name, phone )
+      profiles ( full_name, phone )
     `,
     )
     .eq("courts.venue_id", venue.id)
