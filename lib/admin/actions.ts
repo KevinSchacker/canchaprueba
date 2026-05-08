@@ -18,7 +18,7 @@ async function ensureAdmin() {
 
 export async function upsertSubscription(formData: FormData) {
   const auth = await ensureAdmin()
-  if (!auth.ok) return { error: auth.error }
+  if (!auth.ok || !auth.supabase) return { error: auth.ok ? "Error interno" : auth.error }
 
   const ownerId = formData.get("owner_id") as string
   const status = formData.get("status") as string
@@ -47,7 +47,7 @@ export async function upsertSubscription(formData: FormData) {
 
 export async function setSubscriptionStatus(formData: FormData) {
   const auth = await ensureAdmin()
-  if (!auth.ok) return { error: auth.error }
+  if (!auth.ok || !auth.supabase) return { error: auth.ok ? "Error interno" : auth.error }
 
   const ownerId = formData.get("owner_id") as string
   const status = formData.get("status") as string
@@ -62,7 +62,7 @@ export async function setSubscriptionStatus(formData: FormData) {
 
 export async function setUserRole(formData: FormData) {
   const auth = await ensureAdmin()
-  if (!auth.ok) return { error: auth.error }
+  if (!auth.ok || !auth.supabase) return { error: auth.ok ? "Error interno" : auth.error }
 
   const userId = formData.get("user_id") as string
   const role = formData.get("role") as string
@@ -72,5 +72,32 @@ export async function setUserRole(formData: FormData) {
 
   if (error) return { error: error.message }
   revalidatePath("/admin/usuarios")
+  return { ok: true }
+}
+
+/**
+ * ELIMINA TODAS LAS RESERVAS Y MOVIMIENTOS DE CAJA
+ * Uso exclusivo para pruebas de desarrollo.
+ */
+export async function devOnlyClearAllBookings() {
+  const auth = await ensureAdmin()
+  if (!auth.ok || !auth.supabase) return { ok: false, error: auth.ok ? "Error interno" : auth.error }
+
+  // 1. Eliminar reviews primero por FK
+  await auth.supabase.from("reviews").delete().neq("id", "00000000-0000-0000-0000-000000000000") // Truco para borrar todo sin where id in
+  
+  // 2. Eliminar movimientos de caja
+  await auth.supabase.from("cash_movements").delete().neq("id", "00000000-0000-0000-0000-000000000000")
+
+  // 3. Eliminar bookings
+  const { error } = await auth.supabase
+    .from("bookings")
+    .delete()
+    .neq("id", "00000000-0000-0000-0000-000000000000")
+
+  if (error) return { ok: false, error: error.message }
+
+  revalidatePath("/admin")
+  revalidatePath("/panel")
   return { ok: true }
 }

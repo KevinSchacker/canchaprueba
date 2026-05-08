@@ -2,6 +2,7 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Building2, Calendar, Users, CreditCard } from "lucide-react"
+import { ClearDataButton } from "@/components/admin/clear-data-button"
 
 export default async function AdminHome() {
   const supabase = await createClient()
@@ -34,9 +35,12 @@ export default async function AdminHome() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Resumen general</h1>
-        <p className="text-sm text-muted-foreground">Visión global de la plataforma.</p>
+      <div className="flex items-center justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">Resumen general</h1>
+          <p className="text-sm text-muted-foreground">Visión global de la plataforma.</p>
+        </div>
+        <ClearDataButton />
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
