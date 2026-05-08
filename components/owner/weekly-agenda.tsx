@@ -1,8 +1,9 @@
 "use client"
 
 import { useState } from "react"
+import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, User, BanknoteIcon } from "lucide-react"
+import { ChevronLeft, ChevronRight, User, BanknoteIcon, Plus } from "lucide-react"
 
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7) // 7hs a 22hs
 const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -28,14 +29,30 @@ type BookingSlot = {
 
 interface Props {
   bookings: BookingSlot[]
+  /** Lista de canchas disponibles para crear turno rápido al hacer clic en celda vacía */
+  courts?: { id: string; name: string }[]
+  venueId?: string
 }
 
-const STATUS_COLORS: Record<string, { bg: string; border: string; text: string }> = {
-  pending: { bg: "bg-accent/20", border: "border-accent/50", text: "text-accent" },
-  confirmed: { bg: "bg-primary/20", border: "border-primary/50", text: "text-primary" },
-  cancelled: { bg: "bg-muted", border: "border-border", text: "text-muted-foreground" },
-  completed: { bg: "bg-secondary", border: "border-border", text: "text-secondary-foreground" },
-  no_show: { bg: "bg-destructive/15", border: "border-destructive/40", text: "text-destructive" },
+/**
+ * Semántica de colores:
+ * - verde  → confirmada con seña pagada (o completada)
+ * - naranja → confirmada sin seña / pendiente de seña
+ * - rojo   → no_show
+ * - gris   → cancelada
+ */
+function getStatusColors(status: string, depositPaid: boolean) {
+  if (status === "cancelled") {
+    return { bg: "bg-muted/50", border: "border-border", text: "text-muted-foreground" }
+  }
+  if (status === "no_show") {
+    return { bg: "bg-destructive/15", border: "border-destructive/50", text: "text-destructive" }
+  }
+  if (status === "completed" || (status === "confirmed" && depositPaid)) {
+    return { bg: "bg-emerald-500/15", border: "border-emerald-500/40", text: "text-emerald-600 dark:text-emerald-400" }
+  }
+  // pending o confirmed sin seña → naranja
+  return { bg: "bg-amber-500/15", border: "border-amber-500/40", text: "text-amber-600 dark:text-amber-400" }
 }
 
 /** Devuelve los 7 días de la semana a partir del lunes de la semana dada */
@@ -55,7 +72,8 @@ function dateKey(d: Date) {
   return d.toISOString().slice(0, 10)
 }
 
-export function WeeklyAgenda({ bookings }: Props) {
+export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
+  const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   const [selected, setSelected] = useState<BookingSlot | null>(null)
 
@@ -88,6 +106,18 @@ export function WeeklyAgenda({ bookings }: Props) {
 
   const monthLabel = weekStart.toLocaleDateString("es-AR", { month: "long", year: "numeric" })
 
+  /** Abre el formulario de nueva reserva precompletado */
+  const handleEmptyCellClick = (day: Date, hour: number, courtId?: string) => {
+    const dateStr = day.toISOString().slice(0, 10)
+    const timeStr = `${String(hour).padStart(2, "0")}:00`
+    const params = new URLSearchParams({
+      date: dateStr,
+      time: timeStr,
+      ...(courtId ? { court: courtId } : {}),
+    })
+    router.push(`/panel/reservas/nueva?${params.toString()}`)
+  }
+
   return (
     <div className="flex flex-col gap-3">
       {/* Header de navegación */}
@@ -107,6 +137,26 @@ export function WeeklyAgenda({ bookings }: Props) {
         >
           <ChevronRight className="h-4 w-4" />
         </button>
+      </div>
+
+      {/* Leyenda de colores */}
+      <div className="flex flex-wrap gap-3 text-[10px] font-medium text-muted-foreground">
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-emerald-500/60 border border-emerald-500/50" />
+          Confirmada / Pagada
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-amber-500/60 border border-amber-500/50" />
+          Pendiente de seña
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-destructive/60 border border-destructive/50" />
+          No se presentó
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-sm bg-muted border border-border" />
+          Cancelada
+        </span>
       </div>
 
       {/* Grilla */}
@@ -154,6 +204,7 @@ export function WeeklyAgenda({ bookings }: Props) {
             {weekDays.map((day, colIdx) => {
               const isToday = dateKey(day) === dateKey(new Date())
               const dayBookings = weekBookings.filter((b) => dateKey(new Date(b.start_time)) === dateKey(day))
+              const firstCourtId = courts[0]?.id
 
               return (
                 <div
@@ -164,14 +215,35 @@ export function WeeklyAgenda({ bookings }: Props) {
                   )}
                   style={{ height: `${HOURS.length * 40}px` }}
                 >
-                  {/* Líneas de horas */}
-                  {HOURS.map((h) => (
-                    <div
-                      key={h}
-                      className="absolute w-full border-b border-border/50"
-                      style={{ top: `${((h - 7) / HOURS.length) * 100}%` }}
-                    />
-                  ))}
+                  {/* Líneas de horas + zonas clickeables vacías */}
+                  {HOURS.map((h) => {
+                    const hasBookingAtHour = dayBookings.some((b) => {
+                      const bh = new Date(b.start_time).getHours()
+                      return bh === h
+                    })
+                    return (
+                      <div
+                        key={h}
+                        className={cn(
+                          "absolute w-full border-b border-border/50 group",
+                          !hasBookingAtHour && "cursor-pointer hover:bg-primary/5",
+                        )}
+                        style={{ top: `${((h - 7) / HOURS.length) * 100}%`, height: `${100 / HOURS.length}%` }}
+                        onClick={() => {
+                          if (!hasBookingAtHour) {
+                            handleEmptyCellClick(day, h, firstCourtId)
+                          }
+                        }}
+                        title={!hasBookingAtHour ? `Crear turno el ${day.getDate()} a las ${h}hs` : undefined}
+                      >
+                        {!hasBookingAtHour && (
+                          <span className="hidden group-hover:flex absolute inset-0 items-center justify-center">
+                            <Plus className="h-3 w-3 text-primary/50" />
+                          </span>
+                        )}
+                      </div>
+                    )
+                  })}
 
                   {/* Bloques de reservas */}
                   {dayBookings.map((b) => {
@@ -183,15 +255,18 @@ export function WeeklyAgenda({ bookings }: Props) {
                     const heightPct = toPercent(Math.min(endMin, RANGE_START + RANGE_TOTAL)) - topPct
                     if (heightPct <= 0) return null
 
-                    const colors = STATUS_COLORS[b.status] ?? STATUS_COLORS.pending
+                    const colors = getStatusColors(b.status, b.deposit_paid)
                     const timeLabel = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`
 
                     return (
                       <button
                         key={b.id}
-                        onClick={() => setSelected(selected?.id === b.id ? null : b)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setSelected(selected?.id === b.id ? null : b)
+                        }}
                         className={cn(
-                          "absolute inset-x-0.5 rounded-md border px-1.5 py-0.5 text-left transition-opacity hover:opacity-90",
+                          "absolute inset-x-0.5 rounded-md border px-1.5 py-0.5 text-left transition-opacity hover:opacity-90 z-10",
                           colors.bg,
                           colors.border,
                         )}
@@ -259,8 +334,8 @@ export function WeeklyAgenda({ bookings }: Props) {
               className={cn(
                 "rounded-full px-2 py-0.5 font-medium",
                 selected.deposit_paid
-                  ? "bg-primary/10 text-primary"
-                  : "bg-accent/10 text-accent",
+                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                  : "bg-amber-500/15 text-amber-600 dark:text-amber-400",
               )}
             >
               {selected.deposit_paid ? "Seña pagada" : "Seña pendiente"}

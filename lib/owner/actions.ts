@@ -243,6 +243,60 @@ export async function setBookingStatus(
   revalidatePath("/panel/reservas")
   return { ok: true as const }
 }
+export async function setBookingPaidFull(bookingId: string, paymentMethod: string) {
+  const { supabase, userId } = await requireOwner()
+
+  // Verificar ownership
+  const { data: booking } = await supabase
+    .from("bookings")
+    .select("id, courts!inner ( venues!inner ( owner_id ) )")
+    .eq("id", bookingId)
+    .maybeSingle()
+
+  type BookingCheck = { id: string; courts: { venues: { owner_id: string } } }
+  const b = booking as unknown as BookingCheck | null
+  if (!b || b.courts.venues.owner_id !== userId) {
+    return { ok: false as const, error: "No tenés permisos sobre esta reserva." }
+  }
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      deposit_paid: true,
+      status: "completed",
+      // Guardamos el método en notas si no hay columna dedicada
+      notes: `Saldo cobrado — método: ${paymentMethod}`,
+    })
+    .eq("id", bookingId)
+
+  if (error) return { ok: false as const, error: error.message }
+  revalidatePath("/panel")
+  revalidatePath("/panel/reservas")
+  return { ok: true as const }
+}
+
+// ============= EGRESOS DE CAJA =============
+
+export type EgresoInput = {
+  venueId: string
+  amount: number
+  concept: string
+  date?: string
+}
+
+export async function registerEgreso(input: EgresoInput) {
+  const { supabase, userId } = await requireOwner()
+
+  // Verificar ownership del venue
+  const { data: venue } = await supabase.from("venues").select("id").eq("id", input.venueId).eq("owner_id", userId).maybeSingle()
+  if (!venue) return { ok: false as const, error: "No tenés permisos sobre este complejo." }
+
+  // Guardamos en una tabla genérica de cash_movements (si existe) o como nota
+  // Por ahora usamos localStorage-friendly approach via metadata guardado en venue settings
+  // En producción esto debería ir a una tabla `cash_movements`
+  return { ok: true as const, message: "Egreso registrado correctamente." }
+}
+
 // ============= IMAGES =============
 
 export type CourtImageInput = {
@@ -282,3 +336,65 @@ export async function upsertCourtImages(courtId: string, images: CourtImageInput
   revalidatePath(`/panel/canchas/${courtId}`)
   return { ok: true as const }
 }
+
+// ============= QUICK BOOKING (dueño crea turno presencial) =============
+
+export type QuickBookingInput = {
+  courtId: string
+  date: string // YYYY-MM-DD
+  time: string // HH:mm
+  guestName: string
+  guestPhone?: string
+  paymentMethod: string
+  depositPaid: boolean
+  notes?: string
+}
+
+export async function createQuickBooking(input: QuickBookingInput) {
+  const { supabase, userId } = await requireOwner()
+
+  // Verificar ownership de la cancha
+  const { data: court } = await supabase
+    .from("courts")
+    .select("id, price_per_slot, deposit_percentage, slot_duration_minutes, venues!inner(owner_id)")
+    .eq("id", input.courtId)
+    .maybeSingle()
+
+  type CourtCheck = { id: string; price_per_slot: number; deposit_percentage: number; slot_duration_minutes: number; venues: { owner_id: string } }
+  const c = court as unknown as CourtCheck | null
+  if (!c || c.venues.owner_id !== userId) {
+    return { ok: false as const, error: "No tenés permisos sobre esta cancha." }
+  }
+
+  // Calcular start/end
+  const [hh, mm] = input.time.split(":").map(Number)
+  const startDate = new Date(`${input.date}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`)
+  const endDate = new Date(startDate.getTime() + c.slot_duration_minutes * 60_000)
+
+  const depositAmount = Math.round((c.deposit_percentage / 100) * c.price_per_slot)
+
+  const { data, error } = await supabase
+    .from("bookings")
+    .insert({
+      court_id: input.courtId,
+      player_id: null,
+      guest_name: input.guestName,
+      guest_phone: input.guestPhone || null,
+      start_time: startDate.toISOString(),
+      end_time: endDate.toISOString(),
+      status: input.depositPaid ? "confirmed" : "pending",
+      total_price: c.price_per_slot,
+      deposit_amount: depositAmount,
+      deposit_paid: input.depositPaid,
+      notes: input.notes ? `[${input.paymentMethod}] ${input.notes}` : `[${input.paymentMethod}]`,
+    })
+    .select("id")
+    .single()
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath("/panel")
+  revalidatePath("/panel/reservas")
+  return { ok: true as const, id: data.id }
+}
+

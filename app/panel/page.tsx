@@ -12,8 +12,10 @@ import {
   XCircle,
   DollarSign,
   BarChart3,
+  Plus,
 } from "lucide-react"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
+import { EgresoButton } from "@/components/owner/egreso-button"
 
 export const dynamic = "force-dynamic"
 
@@ -52,8 +54,17 @@ export default async function PanelHomePage() {
   let monthCancelled = 0
   let occupancyPct = 0
   let peakHour = "--"
+
+  // Caja del día — con desglose por método
   let todayOnline = 0
   let todayPending = 0
+  let todayCash = 0
+  let todayMP = 0
+  let todayTransfer = 0
+
+  // Semana actual vs anterior (para gráfico de barras)
+  let weekCurrentData: number[] = Array(7).fill(0)
+  let weekPrevData: number[] = Array(7).fill(0)
 
   if (venue) {
     const { count } = await supabase
@@ -92,7 +103,7 @@ export default async function PanelHomePage() {
     const { data: monthData } = await supabase
       .from("bookings")
       .select(
-        `id, start_time, end_time, status, total_price, deposit_amount, deposit_paid,
+        `id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes,
          courts!inner ( venue_id, slot_duration_minutes )`,
       )
       .eq("courts.venue_id", venue.id)
@@ -107,11 +118,11 @@ export default async function PanelHomePage() {
       total_price: string | number
       deposit_amount: string | number
       deposit_paid: boolean
+      notes: string | null
       courts: { venue_id: string; slot_duration_minutes: number }
     }
     const mList = (monthData ?? []) as unknown as MonthRow[]
 
-    // Ingresos = sum deposit_amount de las que tienen deposit_paid
     monthRevenue = mList
       .filter((b) => b.deposit_paid && b.status !== "cancelled")
       .reduce((sum, b) => sum + Number(b.deposit_amount || 0), 0)
@@ -119,7 +130,7 @@ export default async function PanelHomePage() {
     monthBookings = mList.filter((b) => b.status !== "cancelled").length
     monthCancelled = mList.filter((b) => b.status === "cancelled").length
 
-    // Hora pico: la hora con más reservas
+    // Hora pico
     const hourMap: Record<number, number> = {}
     mList
       .filter((b) => b.status !== "cancelled")
@@ -128,28 +139,24 @@ export default async function PanelHomePage() {
         hourMap[h] = (hourMap[h] || 0) + 1
       })
     const peakEntry = Object.entries(hourMap).sort((a, b) => Number(b[1]) - Number(a[1]))[0]
-    if (peakEntry) {
-      peakHour = `${String(peakEntry[0]).padStart(2, "0")}:00hs`
-    }
+    if (peakEntry) peakHour = `${String(peakEntry[0]).padStart(2, "0")}:00hs`
 
-    // Ocupación estimada: slots ocupados / slots posibles del mes
-    // Posibles = courts * días del mes * (horas promedio apertura / duración turno)
+    // Ocupación
     if (courtsCount > 0 && monthBookings > 0) {
       const daysInMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate()
-      // Estimamos 14hs de apertura promedio, turnos de ~60min
       const avgSlotsPerCourtPerDay = 14
       const totalPossible = courtsCount * daysInMonth * avgSlotsPerCourtPerDay
       occupancyPct = totalPossible > 0 ? Math.min(100, Math.round((monthBookings / totalPossible) * 100)) : 0
     }
 
-    // ─── Caja del día ───
+    // ─── Caja del día con desglose ───
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59).toISOString()
 
     const { data: todayData } = await supabase
       .from("bookings")
       .select(
-        `id, start_time, status, total_price, deposit_amount, deposit_paid,
+        `id, start_time, status, total_price, deposit_amount, deposit_paid, notes,
          courts!inner ( venue_id )`,
       )
       .eq("courts.venue_id", venue.id)
@@ -163,6 +170,7 @@ export default async function PanelHomePage() {
       deposit_amount: string | number
       deposit_paid: boolean
       status: string
+      notes: string | null
     }
     const tList = (todayData ?? []) as unknown as TodayRow[]
 
@@ -172,15 +180,77 @@ export default async function PanelHomePage() {
     todayPending = tList
       .filter((b) => !b.deposit_paid)
       .reduce((sum, b) => sum + Number(b.total_price || 0), 0)
+
+    // Desglose por método (basado en notas guardadas por CollectRemainingDialog)
+    for (const b of tList) {
+      if (b.notes?.includes("efectivo")) todayCash += Number(b.deposit_amount || 0)
+      else if (b.notes?.includes("mercadopago")) todayMP += Number(b.deposit_amount || 0)
+      else if (b.notes?.includes("transferencia")) todayTransfer += Number(b.deposit_amount || 0)
+      else if (b.deposit_paid) todayOnline += 0 // ya sumado arriba
+    }
+
+    // ─── Gráfico semana actual vs anterior ───
+    // Semana actual
+    const monday = new Date(now)
+    monday.setDate(now.getDate() - ((now.getDay() + 6) % 7))
+    monday.setHours(0, 0, 0, 0)
+    const sunday = new Date(monday)
+    sunday.setDate(monday.getDate() + 6)
+    sunday.setHours(23, 59, 59, 999)
+
+    const { data: weekCurrent } = await supabase
+      .from("bookings")
+      .select("start_time, status, courts!inner(venue_id)")
+      .eq("courts.venue_id", venue.id)
+      .gte("start_time", monday.toISOString())
+      .lte("start_time", sunday.toISOString())
+      .neq("status", "cancelled")
+
+    for (const b of (weekCurrent ?? [])) {
+      const dow = (new Date(b.start_time).getDay() + 6) % 7 // 0=lun, 6=dom
+      weekCurrentData[dow]++
+    }
+
+    // Semana anterior
+    const prevMonday = new Date(monday)
+    prevMonday.setDate(monday.getDate() - 7)
+    const prevSunday = new Date(prevMonday)
+    prevSunday.setDate(prevMonday.getDate() + 6)
+    prevSunday.setHours(23, 59, 59, 999)
+
+    const { data: weekPrev } = await supabase
+      .from("bookings")
+      .select("start_time, status, courts!inner(venue_id)")
+      .eq("courts.venue_id", venue.id)
+      .gte("start_time", prevMonday.toISOString())
+      .lte("start_time", prevSunday.toISOString())
+      .neq("status", "cancelled")
+
+    for (const b of (weekPrev ?? [])) {
+      const dow = (new Date(b.start_time).getDay() + 6) % 7
+      weekPrevData[dow]++
+    }
   }
 
   const monthName = new Date().toLocaleDateString("es-AR", { month: "long" })
+  const dayNames = ["Lun", "Mar", "Mié", "Jue", "Vie", "Sáb", "Dom"]
+  const maxWeekVal = Math.max(...weekCurrentData, ...weekPrevData, 1)
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Inicio</h1>
-        <p className="text-sm text-muted-foreground">Resumen de tu actividad en CanchAR.</p>
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight text-foreground md:text-3xl">Inicio</h1>
+          <p className="text-sm text-muted-foreground">Resumen de tu actividad en CanchAR.</p>
+        </div>
+        {/* ── Botón acción rápida: Nuevo Turno ── */}
+        <Link
+          href="/panel/reservas/nueva"
+          className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2.5 text-sm font-semibold text-primary-foreground shadow-md hover:opacity-90 transition-opacity shrink-0"
+        >
+          <Plus className="h-4 w-4" />
+          Nuevo Turno
+        </Link>
       </div>
 
       {!subscription && (
@@ -261,28 +331,24 @@ export default async function PanelHomePage() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-                {/* Ingresos */}
                 <MiniStat
                   icon={<DollarSign className="h-4 w-4" />}
                   label="Ingresos (señas)"
                   value={`$${monthRevenue.toLocaleString("es-AR")}`}
                   color="text-primary"
                 />
-                {/* Ocupación */}
                 <MiniStat
                   icon={<TrendingUp className="h-4 w-4" />}
                   label="Ocupación"
                   value={`${occupancyPct}%`}
                   color="text-accent"
                 />
-                {/* Hora pico */}
                 <MiniStat
                   icon={<Clock className="h-4 w-4" />}
                   label="Hora pico"
                   value={peakHour}
                   color="text-foreground"
                 />
-                {/* Cancelaciones */}
                 <MiniStat
                   icon={<XCircle className="h-4 w-4" />}
                   label="Cancelaciones"
@@ -295,9 +361,7 @@ export default async function PanelHomePage() {
               {monthBookings > 0 && (
                 <div className="mt-5">
                   <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-                    <span>
-                      {monthBookings} turnos confirmados este mes
-                    </span>
+                    <span>{monthBookings} turnos confirmados este mes</span>
                     <span>{occupancyPct}% ocupación</span>
                   </div>
                   <div className="h-2.5 w-full overflow-hidden rounded-full bg-secondary">
@@ -311,12 +375,60 @@ export default async function PanelHomePage() {
             </CardContent>
           </Card>
 
-          {/* ── Caja del día ── */}
+          {/* ── Gráfico de barras: semana actual vs anterior ── */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-base">Ocupación semanal</CardTitle>
+              <CardDescription>Turnos por día: semana actual vs semana anterior.</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="flex items-end gap-1.5 h-32 mt-2">
+                {dayNames.map((day, i) => {
+                  const curr = weekCurrentData[i]
+                  const prev = weekPrevData[i]
+                  return (
+                    <div key={day} className="flex flex-1 flex-col items-center gap-1">
+                      <div className="flex gap-0.5 items-end w-full h-24">
+                        {/* Barra semana anterior */}
+                        <div
+                          className="flex-1 rounded-t bg-border/60"
+                          style={{ height: `${(prev / maxWeekVal) * 100}%`, minHeight: prev > 0 ? "4px" : "0" }}
+                          title={`Semana anterior: ${prev} turnos`}
+                        />
+                        {/* Barra semana actual */}
+                        <div
+                          className="flex-1 rounded-t bg-primary"
+                          style={{ height: `${(curr / maxWeekVal) * 100}%`, minHeight: curr > 0 ? "4px" : "0" }}
+                          title={`Esta semana: ${curr} turnos`}
+                        />
+                      </div>
+                      <span className="text-[10px] text-muted-foreground">{day}</span>
+                    </div>
+                  )
+                })}
+              </div>
+              <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground">
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-primary" /> Esta semana
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="h-2.5 w-2.5 rounded-sm bg-border/80" /> Semana anterior
+                </span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* ── Caja del día con desglose y egresos ── */}
           {(todayOnline > 0 || todayPending > 0) && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Caja de hoy</CardTitle>
-                <CardDescription>Resumen de cobros del día.</CardDescription>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-base">Caja de hoy</CardTitle>
+                    <CardDescription>Resumen de cobros del día.</CardDescription>
+                  </div>
+                  {venue && <EgresoButton venueId={venue.id} />}
+                </div>
               </CardHeader>
               <CardContent>
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -345,6 +457,32 @@ export default async function PanelHomePage() {
                     </span>
                   </div>
                 </div>
+
+                {/* Desglose de métodos de pago */}
+                {(todayCash > 0 || todayMP > 0 || todayTransfer > 0) && (
+                  <div className="mt-4 rounded-lg bg-secondary/40 p-3">
+                    <p className="mb-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      Desglose por método
+                    </p>
+                    <div className="flex flex-wrap gap-3 text-xs">
+                      {todayCash > 0 && (
+                        <span className="flex items-center gap-1 text-foreground">
+                          💵 Efectivo <strong>${todayCash.toLocaleString("es-AR")}</strong>
+                        </span>
+                      )}
+                      {todayMP > 0 && (
+                        <span className="flex items-center gap-1 text-foreground">
+                          📱 MercadoPago <strong>${todayMP.toLocaleString("es-AR")}</strong>
+                        </span>
+                      )}
+                      {todayTransfer > 0 && (
+                        <span className="flex items-center gap-1 text-foreground">
+                          🏦 Transferencia <strong>${todayTransfer.toLocaleString("es-AR")}</strong>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                )}
               </CardContent>
             </Card>
           )}

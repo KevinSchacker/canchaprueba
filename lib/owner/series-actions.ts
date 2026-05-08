@@ -203,3 +203,46 @@ export async function deleteSeries(seriesId: string) {
   revalidatePath("/panel/reservas")
   return { ok: true as const }
 }
+
+/**
+ * Libera SOLO una ocurrencia de la serie para una fecha específica.
+ * Cancela el booking de esa semana puntual sin tocar el resto del contrato fijo.
+ */
+export async function releaseSeriesException(seriesId: string, date: string, reason: string) {
+  const { supabase, userId } = await requireOwner()
+
+  // Verificar ownership
+  const { data: series } = await supabase
+    .from("booking_series")
+    .select("id, courts!inner ( venues!inner ( owner_id ) )")
+    .eq("id", seriesId)
+    .maybeSingle()
+  type Check = { id: string; courts: { venues: { owner_id: string } } }
+  const s = series as unknown as Check | null
+  if (!s || s.courts.venues.owner_id !== userId) {
+    return { ok: false as const, error: "No tenés permisos sobre esta serie." }
+  }
+
+  // Cancelar el booking de esa fecha específica (que pertence a esta serie)
+  // El booking tiene start_time con fecha == date
+  const dayStart = `${date}T00:00:00`
+  const dayEnd = `${date}T23:59:59`
+
+  const { error } = await supabase
+    .from("bookings")
+    .update({
+      status: "cancelled",
+      cancelled_at: new Date().toISOString(),
+      notes: `Excepción — ${reason}`,
+    })
+    .eq("series_id", seriesId)
+    .gte("start_time", dayStart)
+    .lte("start_time", dayEnd)
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath("/panel/fijos")
+  revalidatePath("/panel/reservas")
+  return { ok: true as const }
+}
+

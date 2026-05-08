@@ -3,8 +3,10 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/components/ui/empty"
-import { Repeat, Plus, User, Phone, Edit3, Calendar, Clock, Banknote } from "lucide-react"
+import { Repeat, Plus, User, Edit3, Calendar, Clock, Banknote, CheckCircle2, AlertCircle } from "lucide-react"
 import { SeriesStatusButtons } from "@/components/owner/series-status-buttons"
+import { WhatsAppLink } from "@/components/owner/whatsapp-link"
+import { ReleaseExceptionButton } from "@/components/owner/release-exception-button"
 import { cn } from "@/lib/utils"
 
 export const dynamic = "force-dynamic"
@@ -93,6 +95,11 @@ export default async function FixedSeriesPage() {
   }
   const list = (series ?? []) as unknown as Row[]
 
+  // Calcular estado de pago del mes actual para cada serie
+  const now = new Date()
+  const currentMonthStart = new Date(now.getFullYear(), now.getMonth(), 1)
+  const currentMonthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -133,26 +140,33 @@ export default async function FixedSeriesPage() {
               Number(startLabel.split(":")[0]) * 60 + Number(startLabel.split(":")[1]) + s.duration_minutes
             const endHH = String(Math.floor(endMin / 60) % 24).padStart(2, "0")
             const endMM = String(endMin % 60).padStart(2, "0")
-            const paidUntilLabel = s.paid_until
-              ? new Date(s.paid_until).toLocaleDateString("es-AR", { month: "short", year: "numeric" })
+
+            // Estado de pago del mes
+            const paidUntilDate = s.paid_until ? new Date(s.paid_until) : null
+            const paidThisMonth = paidUntilDate ? paidUntilDate >= currentMonthEnd : false
+            const paidUntilLabel = paidUntilDate
+              ? paidUntilDate.toLocaleDateString("es-AR", { month: "short", year: "numeric" })
               : null
+
             return (
               <li key={s.id}>
                 <Card className={cn(s.status !== "active" && "opacity-80")}>
                   <CardContent className="flex flex-col gap-3 p-4">
                     <div className="flex items-start justify-between gap-3">
-                      <div className="flex flex-col">
+                      <div className="flex flex-col gap-0.5">
                         <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
                           <User className="h-4 w-4 text-accent" />
                           {s.guest_name ?? "Cliente"}
                         </span>
-                        {s.guest_phone && (
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
-                            <Phone className="h-3 w-3" /> {s.guest_phone}
-                          </span>
-                        )}
+                        {s.guest_phone ? (
+                          <WhatsAppLink
+                            phone={s.guest_phone}
+                            name={s.guest_name ?? "Cliente"}
+                            message={`Hola ${s.guest_name ?? ""},  te recordamos tu turno fijo de los ${DAY_LABELS[s.day_of_week]} a las ${startLabel}hs en ${s.courts.name}. ¡Te esperamos!`}
+                          />
+                        ) : null}
                       </div>
-                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.className)}>
+                      <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0", status.className)}>
                         {status.label}
                       </span>
                     </div>
@@ -170,7 +184,7 @@ export default async function FixedSeriesPage() {
                     </div>
 
                     <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-                      <div className="flex flex-col text-xs text-muted-foreground">
+                      <div className="flex flex-col text-xs text-muted-foreground gap-1">
                         <span className="inline-flex items-center gap-1">
                           <Banknote className="h-3.5 w-3.5" />
                           <span className="font-semibold text-foreground">
@@ -178,11 +192,34 @@ export default async function FixedSeriesPage() {
                           </span>{" "}
                           / turno
                         </span>
-                        {s.monthly_payment && (
-                          <span>Cobro mensual{paidUntilLabel ? ` · pagado hasta ${paidUntilLabel}` : ""}</span>
+
+                        {/* ── Control de pago del mes ── */}
+                        {s.monthly_payment ? (
+                          <span className={cn(
+                            "inline-flex items-center gap-1 rounded-md px-2 py-0.5 font-medium",
+                            paidThisMonth
+                              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                              : "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                          )}>
+                            {paidThisMonth ? (
+                              <><CheckCircle2 className="h-3 w-3" /> Mes pagado{paidUntilLabel ? ` hasta ${paidUntilLabel}` : ""}</>
+                            ) : (
+                              <><AlertCircle className="h-3 w-3" /> Pago del mes pendiente</>
+                            )}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Cobro por turno (cancha a cancha)</span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 flex-wrap justify-end">
+                        {/* Liberar turno excepcional */}
+                        {s.status === "active" && (
+                          <ReleaseExceptionButton
+                            seriesId={s.id}
+                            dayOfWeek={s.day_of_week}
+                            guestName={s.guest_name ?? "Cliente"}
+                          />
+                        )}
                         <SeriesStatusButtons seriesId={s.id} status={s.status} />
                         <Button asChild variant="outline" size="sm">
                           <Link href={`/panel/fijos/${s.id}`}>
