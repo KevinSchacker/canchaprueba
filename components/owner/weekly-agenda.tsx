@@ -18,10 +18,12 @@ type BookingSlot = {
   deposit_paid: boolean
   player_id?: string | null
   court_id?: string
+  guest_name?: string | null
   // Estructura nueva (flat)
   courtName?: string
   playerName?: string
   playerPhone?: string | null
+  isPresencial?: boolean
   // Estructura vieja (join), por retrocompatibilidad
   courts?: { id: string; name: string }
   profiles?: { full_name: string | null; phone: string | null } | null
@@ -273,7 +275,7 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                         style={{ top: `${topPct}%`, height: `${heightPct}%`, minHeight: "24px" }}
                       >
                         <p className={cn("truncate text-[10px] font-semibold leading-tight", colors.text)}>
-                          {(b.playerName ?? b.profiles?.full_name ?? "Jugador").split(" ")[0]}
+                          {(b.playerName ?? b.profiles?.full_name ?? b.guest_name ?? "Jugador").split(" ")[0]}
                         </p>
                         <p className="truncate text-[9px] text-muted-foreground">{timeLabel} · {b.courtName ?? b.courts?.name ?? "Cancha"}</p>
                       </button>

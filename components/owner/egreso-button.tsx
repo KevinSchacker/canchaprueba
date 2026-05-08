@@ -38,7 +38,7 @@ export function EgresoButton({ venueId }: { venueId: string }) {
     }
     setError(null)
     startTransition(async () => {
-      const res = await registerEgreso({ venueId, amount: Number(amount), concept })
+      const res = await registerEgreso({ venueId, amount: Number(amount), concept, method })
       if (!res.ok) {
         setError(res.error ?? "Error al registrar.")
         return

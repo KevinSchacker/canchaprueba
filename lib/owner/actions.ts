@@ -281,20 +281,35 @@ export type EgresoInput = {
   venueId: string
   amount: number
   concept: string
-  date?: string
+  method?: string
 }
 
 export async function registerEgreso(input: EgresoInput) {
   const { supabase, userId } = await requireOwner()
 
   // Verificar ownership del venue
-  const { data: venue } = await supabase.from("venues").select("id").eq("id", input.venueId).eq("owner_id", userId).maybeSingle()
+  const { data: venue } = await supabase
+    .from("venues")
+    .select("id")
+    .eq("id", input.venueId)
+    .eq("owner_id", userId)
+    .maybeSingle()
   if (!venue) return { ok: false as const, error: "No tenés permisos sobre este complejo." }
 
-  // Guardamos en una tabla genérica de cash_movements (si existe) o como nota
-  // Por ahora usamos localStorage-friendly approach via metadata guardado en venue settings
-  // En producción esto debería ir a una tabla `cash_movements`
-  return { ok: true as const, message: "Egreso registrado correctamente." }
+  // Guardar en tabla cash_movements
+  const { error } = await supabase.from("cash_movements").insert({
+    venue_id: input.venueId,
+    type: "egreso",
+    amount: input.amount,
+    concept: input.concept,
+    method: input.method ?? null,
+    created_by: userId,
+  })
+
+  if (error) return { ok: false as const, error: error.message }
+
+  revalidatePath("/panel")
+  return { ok: true as const }
 }
 
 // ============= IMAGES =============

@@ -64,11 +64,11 @@ export default async function OwnerBookingsPage({
   const { data: courts } = await adminDb.from("courts").select("id, name").eq("venue_id", venue.id)
   const courtIds = (courts ?? []).map((c) => c.id)
 
-  // 2. Reservas de esas canchas
+  // 2. Reservas de esas canchas (incluye guest_name/guest_phone para turnos presenciales)
   const { data: rawBookings } = courtIds.length > 0
     ? await adminDb
         .from("bookings")
-        .select("id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id, court_id")
+        .select("id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, player_id, court_id, guest_name, guest_phone")
         .in("court_id", courtIds)
         .order("start_time", { ascending: true })
     : { data: [] as any[] }
@@ -140,19 +140,33 @@ export default async function OwnerBookingsPage({
     deposit_amount: string | number
     deposit_paid: boolean
     notes: string | null
-    player_id: string
+    player_id: string | null
     court_id: string
+    guest_name: string | null
+    guest_phone: string | null
     playerName: string
     playerPhone: string | null
     courtName: string
+    /** true cuando fue creado por el dueño (sin player_id) */
+    isPresencial: boolean
   }
 
-  const list: Row[] = bookingList.map((b: any) => ({
-    ...b,
-    playerName: profileMap[b.player_id]?.full_name || emailMap[b.player_id] || "Sin nombre",
-    playerPhone: profileMap[b.player_id]?.phone ?? null,
-    courtName: courtMap[b.court_id] ?? "Cancha",
-  }))
+  const list: Row[] = bookingList.map((b: any) => {
+    const fromProfile = b.player_id ? profileMap[b.player_id] : null
+    const playerName =
+      fromProfile?.full_name ||
+      (b.player_id ? emailMap[b.player_id] : null) ||
+      b.guest_name ||
+      "Sin nombre"
+    const playerPhone = fromProfile?.phone ?? b.guest_phone ?? null
+    return {
+      ...b,
+      playerName,
+      playerPhone,
+      courtName: courtMap[b.court_id] ?? "Cancha",
+      isPresencial: !b.player_id,
+    }
+  })
 
   // Separar en upcoming/past
   const upcoming = list.filter((b) => new Date(b.start_time) >= new Date() && b.status !== "cancelled")
@@ -278,11 +292,12 @@ function Section({
     total_price: string | number
     deposit_amount: string | number
     deposit_paid: boolean
-    player_id: string
+    player_id: string | null
     court_id: string
     playerName: string
     playerPhone: string | null
     courtName: string
+    isPresencial: boolean
   }>
   muted?: boolean
   playerReputation: Record<string, { average: number; count: number }>
@@ -303,7 +318,7 @@ function Section({
             end.getHours(),
           ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
           const status = statusLabel[b.status] ?? statusLabel.pending
-          const playerNoShows = noShowCount[b.player_id] ?? 0
+          const playerNoShows = b.player_id ? (noShowCount[b.player_id] ?? 0) : 0
           const isHighRisk = playerNoShows >= 2
 
           return (
@@ -322,12 +337,22 @@ function Section({
 
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex flex-col gap-0.5">
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
                           <User className="h-4 w-4 text-accent" />
                           {b.playerName}
                         </span>
-                        {playerReputation[b.player_id] && (
+                        {/* Badge turno presencial vs app */}
+                        {b.isPresencial ? (
+                          <span className="rounded-full bg-secondary border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                            📍 Presencial / telefónico
+                          </span>
+                        ) : (
+                          <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary">
+                            📱 App
+                          </span>
+                        )}
+                        {b.player_id && playerReputation[b.player_id] && (
                           <span className="flex items-center gap-0.5 text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
                             ★ {playerReputation[b.player_id].average.toFixed(1)}
                           </span>
@@ -346,7 +371,7 @@ function Section({
                         />
                       ) : null}
                     </div>
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium", status.color)}>
+                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0", status.color)}>
                       {status.label}
                     </span>
                   </div>
@@ -392,7 +417,8 @@ function Section({
                           playerName={b.playerName}
                         />
                       )}
-                      {b.status === "completed" && (() => {
+                      {/* Solo mostrar calificación si es reserva desde la App (tiene player_id) */}
+                      {b.status === "completed" && b.player_id && (() => {
                         const hasRated = playerReviews.some((r) => r.booking_id === b.id && r.reviewer_id === currentUserId)
                         if (hasRated) {
                           return (
