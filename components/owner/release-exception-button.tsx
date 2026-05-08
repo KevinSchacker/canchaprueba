@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { CalendarX } from "lucide-react"
@@ -32,6 +33,9 @@ export function ReleaseExceptionButton({ seriesId, dayOfWeek, guestName }: Props
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const onConfirm = () => {
     setError(null)
@@ -50,23 +54,12 @@ export function ReleaseExceptionButton({ seriesId, dayOfWeek, guestName }: Props
     })
   }
 
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="gap-1.5 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
-      >
-        <CalendarX className="h-3.5 w-3.5" />
-        Liberar semana
-      </Button>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+  const modal = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
+    >
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
         <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
           <CalendarX className="h-4 w-4 text-amber-500" />
           Liberar turno excepcional
@@ -125,5 +118,20 @@ export function ReleaseExceptionButton({ seriesId, dayOfWeek, guestName }: Props
         </div>
       </div>
     </div>
+  )
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="gap-1.5 text-amber-600 border-amber-500/30 hover:bg-amber-500/10"
+      >
+        <CalendarX className="h-3.5 w-3.5" />
+        Liberar semana
+      </Button>
+      {mounted && open && createPortal(modal, document.body)}
+    </>
   )
 }

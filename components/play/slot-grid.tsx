@@ -14,11 +14,13 @@ interface Props {
   depositPercentage: number
   slots: Slot[]
   slotDurationMinutes: number
+  /** Cuando es true, el jugador debe pagar el 100% (no solo la seña) */
+  forceFullPayment?: boolean
 }
 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
-export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slotDurationMinutes }: Props) {
+export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slotDurationMinutes, forceFullPayment = false }: Props) {
   const router = useRouter()
   const [selectedSlots, setSelectedSlots] = useState<Slot[]>([])
   const [duration, setDuration] = useState<number>(slotDurationMinutes === 30 ? 60 : slotDurationMinutes)
@@ -146,7 +148,13 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
             </div>
           </div>
           <div className="mb-3 flex items-center justify-between rounded-lg bg-secondary px-3 py-2 text-xs">
-            <span className="text-muted-foreground">Seña a pagar ahora</span>
+            <span className="text-muted-foreground">
+              {forceFullPayment ? (
+                <span className="font-semibold text-destructive">⚠️ Pago total requerido (4+ ausencias)</span>
+              ) : (
+                "Seña a pagar ahora"
+              )}
+            </span>
             <span className="font-semibold text-foreground">${depositAmount.toLocaleString("es-AR")}</span>
           </div>
           {error && (

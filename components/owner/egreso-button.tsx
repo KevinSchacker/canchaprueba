@@ -1,11 +1,13 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { ArrowDownCircle, Banknote, CreditCard, Smartphone } from "lucide-react"
 import { registerEgreso } from "@/lib/owner/actions"
 import { useRouter } from "next/navigation"
+import { cn } from "@/lib/utils"
 
 const CONCEPTS = [
   "Personal / sueldos",
@@ -30,6 +32,9 @@ export function EgresoButton({ venueId }: { venueId: string }) {
   const [pending, startTransition] = useTransition()
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => { setMounted(true) }, [])
 
   const onConfirm = () => {
     if (!amount || Number(amount) <= 0) {
@@ -53,23 +58,12 @@ export function EgresoButton({ venueId }: { venueId: string }) {
     })
   }
 
-  if (!open) {
-    return (
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => setOpen(true)}
-        className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
-      >
-        <ArrowDownCircle className="h-4 w-4" />
-        Registrar egreso
-      </Button>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
+  const modal = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => { if (e.target === e.currentTarget) setOpen(false) }}
+    >
+      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl mx-4" onClick={(e) => e.stopPropagation()}>
         <h3 className="flex items-center gap-2 text-base font-semibold text-foreground">
           <ArrowDownCircle className="h-4 w-4 text-destructive" />
           Registrar salida de caja
@@ -79,7 +73,6 @@ export function EgresoButton({ venueId }: { venueId: string }) {
         </p>
 
         <div className="mt-4 flex flex-col gap-3">
-          {/* Concepto */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Concepto</label>
             <select
@@ -93,7 +86,6 @@ export function EgresoButton({ venueId }: { venueId: string }) {
             </select>
           </div>
 
-          {/* Monto */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Monto (ARS)</label>
             <input
@@ -106,7 +98,6 @@ export function EgresoButton({ venueId }: { venueId: string }) {
             />
           </div>
 
-          {/* Método */}
           <div>
             <label className="mb-1.5 block text-xs font-medium text-muted-foreground">Pagado con</label>
             <div className="grid grid-cols-3 gap-2">
@@ -115,11 +106,12 @@ export function EgresoButton({ venueId }: { venueId: string }) {
                   key={id}
                   type="button"
                   onClick={() => setMethod(id)}
-                  className={`flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium transition-colors ${
+                  className={cn(
+                    "flex flex-col items-center gap-1.5 rounded-lg border p-2.5 text-xs font-medium transition-colors cursor-pointer",
                     method === id
                       ? "border-primary bg-primary/10 text-primary"
-                      : "border-border bg-background text-muted-foreground hover:border-primary/40"
-                  }`}
+                      : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-secondary"
+                  )}
                 >
                   <Icon className="h-4 w-4" />
                   {label}
@@ -146,5 +138,20 @@ export function EgresoButton({ venueId }: { venueId: string }) {
         </div>
       </div>
     </div>
+  )
+
+  return (
+    <>
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={() => setOpen(true)}
+        className="gap-1.5 text-destructive border-destructive/30 hover:bg-destructive/10"
+      >
+        <ArrowDownCircle className="h-4 w-4" />
+        Registrar egreso
+      </Button>
+      {mounted && open && createPortal(modal, document.body)}
+    </>
   )
 }

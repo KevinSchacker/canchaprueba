@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useTransition } from "react"
+import { useState, useTransition, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { Button } from "@/components/ui/button"
 import { Spinner } from "@/components/ui/spinner"
 import { setBookingPaidFull } from "@/lib/owner/actions"
@@ -26,6 +27,12 @@ export function CollectRemainingDialog({ bookingId, totalPrice, depositAmount, p
   const [method, setMethod] = useState<string>("cash")
   const [pending, startTransition] = useTransition()
   const [error, setError] = useState<string | null>(null)
+  // Para createPortal necesitamos que el componente esté montado en el cliente
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const remaining = totalPrice - depositAmount
 
@@ -42,23 +49,18 @@ export function CollectRemainingDialog({ bookingId, totalPrice, depositAmount, p
     })
   }
 
-  if (!open) {
-    return (
-      <Button
-        size="sm"
-        variant="outline"
-        className="border-primary/40 text-primary hover:bg-primary/10"
-        onClick={() => setOpen(true)}
+  const modal = (
+    <div
+      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      onClick={(e) => {
+        // Cerrar al hacer click en el backdrop
+        if (e.target === e.currentTarget) setOpen(false)
+      }}
+    >
+      <div
+        className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-2xl mx-4"
+        onClick={(e) => e.stopPropagation()}
       >
-        <DollarSign className="h-3.5 w-3.5 mr-1" />
-        Cobrar restante
-      </Button>
-    )
-  }
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-      <div className="w-full max-w-sm rounded-xl border border-border bg-card p-6 shadow-xl">
         <h3 className="text-base font-semibold text-foreground">Cobrar saldo restante</h3>
         <p className="mt-1 text-sm text-muted-foreground">
           Registrá el pago del saldo de <strong className="text-foreground">{playerName}</strong>.
@@ -87,10 +89,10 @@ export function CollectRemainingDialog({ bookingId, totalPrice, depositAmount, p
                 key={id}
                 type="button"
                 onClick={() => setMethod(id)}
-                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition-colors ${
+                className={`flex flex-col items-center gap-1.5 rounded-lg border p-3 text-xs font-medium transition-colors cursor-pointer ${
                   method === id
                     ? "border-primary bg-primary/10 text-primary"
-                    : "border-border bg-background text-muted-foreground hover:border-primary/40"
+                    : "border-border bg-background text-muted-foreground hover:border-primary/40 hover:bg-secondary"
                 }`}
               >
                 <Icon className="h-4 w-4" />
@@ -114,5 +116,22 @@ export function CollectRemainingDialog({ bookingId, totalPrice, depositAmount, p
         </div>
       </div>
     </div>
+  )
+
+  return (
+    <>
+      <Button
+        size="sm"
+        variant="outline"
+        className="border-primary/40 text-primary hover:bg-primary/10"
+        onClick={() => setOpen(true)}
+      >
+        <DollarSign className="h-3.5 w-3.5 mr-1" />
+        Cobrar restante
+      </Button>
+
+      {/* Portal: se monta directamente en document.body, fuera de cualquier stacking context */}
+      {mounted && open && createPortal(modal, document.body)}
+    </>
   )
 }

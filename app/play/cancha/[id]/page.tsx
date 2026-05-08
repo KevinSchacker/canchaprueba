@@ -94,6 +94,17 @@ export default async function CourtDetailPage({
     ? (courtReviews.reduce((acc, r) => acc + r.rating, 0) / courtReviews.length).toFixed(1)
     : null
 
+  // ── CRM: verificar si el jugador tiene 4+ ausencias en cualquier cancha del complejo ──
+  const { count: noShowCount } = await supabase
+    .from("bookings")
+    .select("id", { count: "exact", head: true })
+    .eq("player_id", user.id)
+    .eq("status", "no_show")
+
+  const NO_SHOW_THRESHOLD = 4
+  const forceFullPayment = (noShowCount ?? 0) >= NO_SHOW_THRESHOLD
+
+
   return (
     <div className="flex min-h-svh flex-col bg-background">
       <header className="sticky top-0 z-20 border-b border-border bg-background/95 backdrop-blur">
@@ -257,12 +268,27 @@ export default async function CourtDetailPage({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
           Horarios disponibles
         </h2>
+
+        {/* Banner de aviso si el jugador tiene muchas ausencias */}
+        {forceFullPayment && (
+          <div className="mb-4 flex items-start gap-3 rounded-xl border border-destructive/30 bg-destructive/5 px-4 py-3 text-sm">
+            <span className="text-lg">⚠️</span>
+            <div>
+              <p className="font-semibold text-destructive">Pago completo requerido</p>
+              <p className="text-muted-foreground mt-0.5">
+                Registraste 4 o más ausencias anteriores. Esta cancha requiere que abones el turno completo al momento de la reserva.
+              </p>
+            </div>
+          </div>
+        )}
+
         <SlotGrid
           courtId={c.id}
           pricePerSlot={price}
-          depositPercentage={c.deposit_percentage}
+          depositPercentage={forceFullPayment ? 100 : c.deposit_percentage}
           slots={slots}
           slotDurationMinutes={c.slot_duration_minutes}
+          forceFullPayment={forceFullPayment}
         />
       </main>
 
