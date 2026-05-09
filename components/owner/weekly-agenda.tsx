@@ -164,50 +164,52 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
       {/* Grilla */}
       <div className="overflow-x-auto rounded-xl border border-border">
         <div className="min-w-[640px]">
-          {/* Cabecera de días */}
-          <div className="grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
-            <div className="border-b border-r border-border" />
+          {/* Cabecera de días con sub-columnas de canchas integradas */}
+          <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
+            <div className="border-r border-border bg-muted/10" />
             {weekDays.map((day, i) => {
               const isToday = dateKey(day) === dateKey(new Date())
               return (
                 <div
                   key={i}
                   className={cn(
-                    "border-b border-r border-border px-1 py-2 text-center last:border-r-0",
-                    isToday && "bg-primary/5",
+                    "flex flex-col border-r border-border last:border-r-0",
+                    isToday && "bg-primary/[0.03]",
                   )}
                 >
-                  <p className={cn("text-[11px] font-medium uppercase text-muted-foreground", isToday && "text-primary")}>
-                    {DAY_SHORT[i === 6 ? 0 : i + 1] /* Lun-Dom */}
-                  </p>
-                  <p className={cn("text-sm font-semibold text-foreground", isToday && "text-primary")}>
-                    {day.getDate()}
-                  </p>
+                  {/* Fecha del día */}
+                  <div className="px-1 py-2 text-center border-b border-border/50">
+                    <p className={cn("text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80", isToday && "text-primary")}>
+                      {DAY_SHORT[i === 6 ? 0 : i + 1]}
+                    </p>
+                    <p className={cn("text-sm font-black text-foreground", isToday && "text-primary")}>
+                      {day.getDate()}
+                    </p>
+                  </div>
+                  
+                  {/* Nombres de canchas alineados con las columnas */}
+                  <div className="flex h-7 bg-muted/5">
+                    {courts.map((court) => (
+                      <div 
+                        key={court.id} 
+                        className="flex-1 flex items-center justify-center border-r border-border/20 last:border-r-0 px-0.5"
+                      >
+                        <span 
+                          className="text-[9px] font-bold uppercase text-muted-foreground/60 truncate max-w-full px-1"
+                          title={court.name}
+                        >
+                          {court.name}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )
             })}
           </div>
 
-          {/* Sub-cabecera de nombres de canchas (Solo si hay más de una cancha o para mayor claridad) */}
-          <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
-            <div className="border-r border-border bg-muted/20" />
-            {weekDays.map((day, i) => {
-              const isToday = dateKey(day) === dateKey(new Date())
-              return (
-                <div key={i} className={cn("flex border-r border-border last:border-r-0", isToday && "bg-primary/5")}>
-                  {courts.map((court) => (
-                    <div 
-                      key={court.id} 
-                      className="flex-1 border-r border-border/10 last:border-r-0 px-1 py-1 text-[8px] font-black uppercase tracking-tighter text-muted-foreground/70 text-center truncate"
-                      title={court.name}
-                    >
-                      {court.name}
-                    </div>
-                  ))}
-                </div>
-              )
-            })}
-          </div>
+          {/* Cuerpo con horas */}
+          <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
 
           {/* Cuerpo con horas */}
           <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
