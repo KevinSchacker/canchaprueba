@@ -188,20 +188,24 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                   </div>
                   
                   {/* Nombres de canchas alineados con las columnas */}
-                  <div className="flex h-7 bg-muted/5">
-                    {courts.map((court) => (
-                      <div 
-                        key={court.id} 
-                        className="flex-1 flex items-center justify-center border-r border-border/20 last:border-r-0 px-0.5"
-                      >
-                        <span 
-                          className="text-[9px] font-bold uppercase text-muted-foreground/60 truncate max-w-full px-1"
-                          title={court.name}
+                  <div className="flex h-7 bg-muted/5 border-t border-border/30">
+                    {courts.map((court) => {
+                      const courtWidth = 100 / courts.length
+                      return (
+                        <div 
+                          key={court.id} 
+                          className="flex items-center justify-center border-r border-border/20 last:border-r-0 overflow-hidden"
+                          style={{ width: `${courtWidth}%` }}
                         >
-                          {court.name}
-                        </span>
-                      </div>
-                    ))}
+                          <span 
+                            className="text-[9px] font-bold uppercase text-muted-foreground/60 truncate px-1 whitespace-nowrap"
+                            title={court.name}
+                          >
+                            {court.name}
+                          </span>
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )
@@ -258,9 +262,10 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                           <div
                             key={court.id}
                             className={cn(
-                              "h-full flex-1 border-r border-border/20 last:border-r-0 transition-colors group",
+                              "h-full border-r border-border/20 last:border-r-0 transition-colors group",
                               !hasBookingAtHourAndCourt ? "cursor-pointer hover:bg-primary/10" : "bg-secondary/5"
                             )}
+                            style={{ width: `${courtWidth}%` }}
                             onClick={() => {
                               if (!hasBookingAtHourAndCourt) {
                                 handleEmptyCellClick(day, h, court.id)
