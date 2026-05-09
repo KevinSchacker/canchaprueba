@@ -168,16 +168,41 @@ export default async function OwnerBookingsPage({
     }
   })
 
-  // Ordenar explícitamente para evitar problemas de desorden
+  // Ordenar cronológicamente
   list.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
 
-  // Separar en upcoming/past
+  // Separar en upcoming/past con lógica de "Turno en curso"
   const now = new Date()
-  const upcoming = list.filter((b) => new Date(b.start_time) >= now && b.status !== "cancelled")
-  const past = list.filter((b) => new Date(b.start_time) < now || b.status === "cancelled")
+  
+  const upcoming = list.filter((b) => {
+    const endTime = new Date(b.end_time)
+    const isFinalStatus = ["cancelled", "completed", "no_show"].includes(b.status)
+    // Si no terminó todavía Y no está cancelado/completado -> Es Próxima o En Curso
+    return endTime > now && !isFinalStatus
+  })
+
+  const past = list.filter((b) => {
+    const endTime = new Date(b.end_time)
+    const isFinalStatus = ["cancelled", "completed", "no_show"].includes(b.status)
+    // Si ya terminó O tiene un estado final -> Es Pasada
+    return endTime <= now || isFinalStatus
+  })
   
   // Past bookings: las más recientes arriba
   past.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
+
+  // Marcar las que están ocurriendo ahora para darles prioridad
+  const upcomingWithLive = upcoming.map(b => ({
+    ...b,
+    isLive: new Date(b.start_time) <= now && new Date(b.end_time) > now
+  }))
+
+  // Re-ordenar upcoming para que las "En Curso" (isLive) aparezcan arriba de todo
+  upcomingWithLive.sort((a, b) => {
+    if (a.isLive && !b.isLive) return -1
+    if (!a.isLive && b.isLive) return 1
+    return new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+  })
 
   // Aplicar filtro activo
   function applyFilter(items: Row[], f: string): Row[] {
@@ -188,7 +213,7 @@ export default async function OwnerBookingsPage({
     return items
   }
 
-  const filteredUpcoming = applyFilter(upcoming, activeFilter)
+  const filteredUpcoming = applyFilter(upcomingWithLive as any, activeFilter)
   const filteredPast = applyFilter(past, activeFilter)
 
   return (
@@ -406,10 +431,16 @@ function Section({
                               ) : null}
                             </div>
 
-                            <div className="flex flex-col items-end gap-2 shrink-0">
-                              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border", status.color, status.color.includes("bg-primary") ? "border-primary/20" : "border-transparent")}>
-                                {status.label}
-                              </span>
+                              <div className="flex flex-col items-end gap-2 shrink-0">
+                                {b.isLive && (
+                                  <span className="flex items-center gap-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 text-[10px] font-black text-emerald-600 uppercase tracking-widest animate-pulse">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                                    EN CURSO
+                                  </span>
+                                )}
+                                <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border", status.color, status.color.includes("bg-primary") ? "border-primary/20" : "border-transparent")}>
+                                  {status.label}
+                                </span>
                               <div className="flex items-center gap-1.5 text-base font-black text-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
                                 <Clock className="h-4 w-4 text-accent" />
                                 {timeLabel}
