@@ -32,7 +32,7 @@ type BookingSlot = {
 interface Props {
   bookings: BookingSlot[]
   /** Lista de canchas disponibles para crear turno rápido al hacer clic en celda vacía */
-  courts?: { id: string; name: string }[]
+  courts?: { id: string; name: string; active?: boolean }[]
   venueId?: string
 }
 
@@ -191,17 +191,24 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                   <div className="flex h-7 bg-muted/5 border-t border-border/30">
                     {courts.map((court) => {
                       const courtWidth = 100 / courts.length
+                      const isClosed = court.active === false
                       return (
                         <div 
                           key={court.id} 
-                          className="flex items-center justify-center border-r border-border/20 last:border-r-0 overflow-hidden"
+                          className={cn(
+                            "flex items-center justify-center border-r border-border/20 last:border-r-0 overflow-hidden",
+                            isClosed && "bg-muted/40"
+                          )}
                           style={{ width: `${courtWidth}%` }}
                         >
                           <span 
-                            className="text-[9px] font-bold uppercase text-muted-foreground/60 truncate px-1 whitespace-nowrap"
+                            className={cn(
+                              "text-[9px] font-bold uppercase truncate px-1 whitespace-nowrap",
+                              isClosed ? "text-muted-foreground/40" : "text-muted-foreground/60"
+                            )}
                             title={court.name}
                           >
-                            {court.name}
+                            {court.name} {isClosed && "(Cerrada)"}
                           </span>
                         </div>
                       )
@@ -252,6 +259,7 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                       style={{ top: `${((h - 7) / HOURS.length) * 100}%`, height: `${100 / HOURS.length}%` }}
                     >
                       {courts.map((court) => {
+                        const isClosed = court.active === false
                         const hasBookingAtHourAndCourt = dayBookings.some((b) => {
                           const bh = new Date(b.start_time).getHours()
                           const bcid = b.court_id ?? (b as any).courts?.id
@@ -262,20 +270,32 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                           <div
                             key={court.id}
                             className={cn(
-                              "h-full border-r border-border/20 last:border-r-0 transition-colors group",
-                              !hasBookingAtHourAndCourt ? "cursor-pointer hover:bg-primary/10" : "bg-secondary/5"
+                              "h-full border-r border-border/20 last:border-r-0 transition-colors group relative",
+                              isClosed 
+                                ? "bg-muted/10 cursor-not-allowed" 
+                                : !hasBookingAtHourAndCourt 
+                                  ? "cursor-pointer hover:bg-primary/10" 
+                                  : "bg-secondary/5"
                             )}
-                            style={{ width: `${courtWidth}%` }}
+                            style={{ 
+                              width: `${courtWidth}%`,
+                              backgroundImage: isClosed ? "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.02) 5px, rgba(0,0,0,0.02) 10px)" : undefined
+                            }}
                             onClick={() => {
-                              if (!hasBookingAtHourAndCourt) {
+                              if (!hasBookingAtHourAndCourt && !isClosed) {
                                 handleEmptyCellClick(day, h, court.id)
                               }
                             }}
-                            title={!hasBookingAtHourAndCourt ? `Reservar ${court.name} - ${h}:00hs` : undefined}
+                            title={isClosed ? "Cancha cerrada" : !hasBookingAtHourAndCourt ? `Reservar ${court.name} - ${h}:00hs` : undefined}
                           >
-                            {!hasBookingAtHourAndCourt && (
+                            {!hasBookingAtHourAndCourt && !isClosed && (
                               <div className="hidden group-hover:flex h-full w-full items-center justify-center">
                                 <Plus className="h-3 w-3 text-primary/40" />
+                              </div>
+                            )}
+                            {isClosed && h === 7 && (
+                              <div className="absolute inset-x-0 top-1 text-center">
+                                <span className="text-[6px] font-black uppercase text-muted-foreground/30 leading-none">Cerrada</span>
                               </div>
                             )}
                           </div>

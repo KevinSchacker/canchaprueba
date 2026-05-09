@@ -61,7 +61,7 @@ export default async function OwnerBookingsPage({
   const adminDb = createAdminClient()
 
   // 1. Canchas del complejo
-  const { data: courts } = await adminDb.from("courts").select("id, name").eq("venue_id", venue.id)
+  const { data: courts } = await adminDb.from("courts").select("id, name, active").eq("venue_id", venue.id)
   const courtIds = (courts ?? []).map((c) => c.id)
 
   // 2. Reservas de esas canchas (incluye guest_name/guest_phone para turnos presenciales)
