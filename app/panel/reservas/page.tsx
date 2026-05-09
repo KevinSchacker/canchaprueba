@@ -168,9 +168,16 @@ export default async function OwnerBookingsPage({
     }
   })
 
+  // Ordenar explícitamente para evitar problemas de desorden
+  list.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime())
+
   // Separar en upcoming/past
-  const upcoming = list.filter((b) => new Date(b.start_time) >= new Date() && b.status !== "cancelled")
-  const past = list.filter((b) => new Date(b.start_time) < new Date() || b.status === "cancelled")
+  const now = new Date()
+  const upcoming = list.filter((b) => new Date(b.start_time) >= now && b.status !== "cancelled")
+  const past = list.filter((b) => new Date(b.start_time) < now || b.status === "cancelled")
+  
+  // Past bookings: las más recientes arriba
+  past.sort((a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime())
 
   // Aplicar filtro activo
   function applyFilter(items: Row[], f: string): Row[] {
@@ -250,7 +257,7 @@ export default async function OwnerBookingsPage({
       ) : view === "agenda" ? (
         <WeeklyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
       ) : (
-        <div className="flex flex-col gap-8">
+        <div className="flex flex-col gap-10">
           <Section
             title="Próximas"
             items={filteredUpcoming}
@@ -258,6 +265,7 @@ export default async function OwnerBookingsPage({
             playerReviews={playerReviews}
             currentUserId={user!.id}
             noShowCount={noShowCount}
+            groupByDate
           />
           <Section
             title="Anteriores"
@@ -282,168 +290,180 @@ function Section({
   playerReviews,
   currentUserId,
   noShowCount,
+  groupByDate = false,
 }: {
   title: string
-  items: Array<{
-    id: string
-    start_time: string
-    end_time: string
-    status: string
-    total_price: string | number
-    deposit_amount: string | number
-    deposit_paid: boolean
-    player_id: string | null
-    court_id: string
-    playerName: string
-    playerPhone: string | null
-    courtName: string
-    isPresencial: boolean
-  }>
+  items: any[]
   muted?: boolean
   playerReputation: Record<string, { average: number; count: number }>
   playerReviews: Array<{ player_id: string; rating: number; reviewer_id: string; booking_id: string }>
   currentUserId: string
   noShowCount: Record<string, number>
+  groupByDate?: boolean
 }) {
   if (items.length === 0) return null
+
+  // Agrupar por fecha si se solicita
+  const groups = groupByDate 
+    ? items.reduce((acc, item) => {
+        const dateKey = new Date(item.start_time).toISOString().split('T')[0]
+        if (!acc[dateKey]) acc[dateKey] = []
+        acc[dateKey].push(item)
+        return acc
+      }, {} as Record<string, any[]>)
+    : { [title]: items }
+
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted-foreground">{title}</h2>
-      <ul className="flex flex-col gap-3">
-        {items.map((b) => {
-          const start = new Date(b.start_time)
-          const end = new Date(b.end_time)
-          const dateLabel = start.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
-          const timeLabel = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}-${String(
-            end.getHours(),
-          ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
-          const status = statusLabel[b.status] ?? statusLabel.pending
-          const playerNoShows = b.player_id ? (noShowCount[b.player_id] ?? 0) : 0
-          const isHighRisk = playerNoShows >= 2
+      <h2 className="mb-4 text-sm font-bold uppercase tracking-widest text-muted-foreground/60 border-b pb-2">{title}</h2>
+      
+      <div className="flex flex-col gap-8">
+        {Object.entries(groups).map(([dateKey, groupItems]) => {
+          const date = new Date(dateKey + 'T12:00:00') // Usar mediodía para evitar problemas de zona horaria al formatear
+          const isToday = new Date().toISOString().split('T')[0] === dateKey
+          const isTomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0] === dateKey
+          
+          const displayDate = groupByDate 
+            ? (isToday ? "Hoy, " : isTomorrow ? "Mañana, " : "") + date.toLocaleDateString("es-AR", { weekday: "long", day: "numeric", month: "long" })
+            : null
 
           return (
-            <li key={b.id}>
-              <Card className={cn(muted && "opacity-80")}>
-                <CardContent className="flex flex-col gap-3 p-4">
-                  {/* Alerta CRM */}
-                  {isHighRisk && (
-                    <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs font-medium text-destructive">
-                      <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
-                      <span>
-                        Este jugador tuvo <strong>{playerNoShows} ausencias</strong> anteriores. Exigir pago total por adelantado.
-                      </span>
-                    </div>
-                  )}
+            <div key={dateKey} className="flex flex-col gap-4">
+              {displayDate && (
+                <div className="flex items-center gap-4 px-1">
+                  <h3 className="text-sm font-bold text-foreground flex items-center gap-2 capitalize">
+                    {displayDate}
+                  </h3>
+                  <div className="h-px flex-1 bg-border/60" />
+                </div>
+              )}
+              <ul className="flex flex-col gap-4">
+                {groupItems.map((b) => {
+                  const start = new Date(b.start_time)
+                  const end = new Date(b.end_time)
+                  const dateLabel = start.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
+                  const timeLabel = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}-${String(
+                    end.getHours(),
+                  ).padStart(2, "0")}:${String(end.getMinutes()).padStart(2, "0")}`
+                  const status = statusLabel[b.status] ?? statusLabel.pending
+                  const playerNoShows = b.player_id ? (noShowCount[b.player_id] ?? 0) : 0
+                  const isHighRisk = playerNoShows >= 2
 
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex flex-col gap-0.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="inline-flex items-center gap-1.5 text-base font-semibold text-foreground">
-                          <User className="h-4 w-4 text-accent" />
-                          {b.playerName}
-                        </span>
-                        {/* Badge turno presencial vs app */}
-                        {b.isPresencial ? (
-                          <span className="rounded-full bg-secondary border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                            📍 Presencial / telefónico
-                          </span>
-                        ) : (
-                          <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-medium text-primary">
-                            📱 App
-                          </span>
-                        )}
-                        {b.player_id && playerReputation[b.player_id] && (
-                          <span className="flex items-center gap-0.5 text-xs font-medium text-amber-500 bg-amber-500/10 px-1.5 py-0.5 rounded-full">
-                            ★ {playerReputation[b.player_id].average.toFixed(1)}
-                          </span>
-                        )}
-                        {isHighRisk && (
-                          <span className="flex items-center gap-0.5 text-xs font-medium text-destructive bg-destructive/10 px-1.5 py-0.5 rounded-full">
-                            ⚠️ {playerNoShows} ausencias
-                          </span>
-                        )}
-                      </div>
-                      {b.playerPhone ? (
-                        <WhatsAppLink
-                          phone={b.playerPhone}
-                          name={b.playerName}
-                          message={`Hola ${b.playerName}, te recordamos tu turno en ${b.courtName} el ${dateLabel} a las ${timeLabel.split("-")[0]}hs. ¡Te esperamos!`}
-                        />
-                      ) : null}
-                    </div>
-                    <span className={cn("rounded-full px-2.5 py-0.5 text-xs font-medium shrink-0", status.color)}>
-                      {status.label}
-                    </span>
-                  </div>
-                  <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground">
-                    <span className="inline-flex items-center gap-1">
-                      <CalendarCheck className="h-3.5 w-3.5 text-accent" /> {dateLabel}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <Clock className="h-3.5 w-3.5 text-accent" /> {timeLabel}
-                    </span>
-                    <span className="inline-flex items-center gap-1">
-                      <MapPin className="h-3.5 w-3.5 text-accent" /> {b.courtName}
-                    </span>
-                  </div>
-                  <div className="flex items-center justify-between gap-3 border-t border-border pt-3">
-                    <div className="flex flex-col text-xs text-muted-foreground">
-                      <span>
-                        Total{" "}
-                        <span className="font-semibold text-foreground">
-                          ${Number(b.total_price).toLocaleString("es-AR")}
-                        </span>
-                      </span>
-                      <span>
-                        Seña{" "}
-                        <span className="font-medium text-foreground">
-                          ${Number(b.deposit_amount).toLocaleString("es-AR")}
-                        </span>{" "}
-                        {b.deposit_paid ? (
-                          <span className="text-primary">✓ Pagada</span>
-                        ) : (
-                          <span className="text-accent">· Pendiente</span>
-                        )}
-                      </span>
-                    </div>
-                    <div className="flex gap-2 flex-wrap justify-end">
-                      <BookingActions bookingId={b.id} status={b.status} />
-                      {/* Botón Cobrar Restante: cuando la seña está pagada y no está completada/cancelada */}
-                      {b.deposit_paid && b.status === "confirmed" && (
-                        <CollectRemainingDialog
-                          bookingId={b.id}
-                          totalPrice={Number(b.total_price)}
-                          depositAmount={Number(b.deposit_amount)}
-                          playerName={b.playerName}
-                        />
-                      )}
-                      {/* Solo mostrar calificación si es reserva desde la App (tiene player_id) */}
-                      {b.status === "completed" && b.player_id && (() => {
-                        const hasRated = playerReviews.some((r) => r.booking_id === b.id && r.reviewer_id === currentUserId)
-                        if (hasRated) {
-                          return (
-                            <span className="inline-flex items-center px-3 py-1 text-xs font-medium text-muted-foreground bg-secondary rounded-md">
-                              ✓ Calificado
-                            </span>
-                          )
-                        }
-                        return (
-                          <RateBookingDialog
-                            bookingId={b.id}
-                            revieweeType="player"
-                            revieweeId={b.player_id}
-                            title="Calificar jugador"
-                          />
-                        )
-                      })()}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </li>
+                  return (
+                    <li key={b.id}>
+                      <Card className={cn(
+                        "overflow-hidden transition-all border-l-4", 
+                        muted 
+                          ? "opacity-75 border-l-muted hover:opacity-100 shadow-none" 
+                          : "border-l-primary shadow-sm hover:shadow-md"
+                      )}>
+                        <CardContent className="flex flex-col gap-3 p-4">
+                          {/* Alerta CRM */}
+                          {isHighRisk && (
+                            <div className="flex items-center gap-2 rounded-md bg-destructive/10 px-3 py-2 text-xs font-semibold text-destructive">
+                              <AlertTriangle className="h-3.5 w-3.5 shrink-0" />
+                              <span>
+                                ATENCIÓN: {playerNoShows} ausencias previas.
+                              </span>
+                            </div>
+                          )}
+
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex flex-col gap-2 min-w-0 flex-1">
+                              {/* Cancha Destacada con Estilo Badge */}
+                              <div className="inline-flex items-center gap-1.5 w-fit rounded-md bg-accent/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-accent border border-accent/20">
+                                <MapPin className="h-3 w-3" />
+                                {b.courtName}
+                              </div>
+                              
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="inline-flex items-center gap-1.5 text-lg font-bold text-foreground truncate">
+                                  {b.playerName}
+                                </span>
+                                {/* Badge turno presencial vs app */}
+                                {b.isPresencial ? (
+                                  <span className="rounded-full bg-secondary border border-border px-2 py-0.5 text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+                                    📍 Presencial
+                                  </span>
+                                ) : (
+                                  <span className="rounded-full bg-primary/10 border border-primary/20 px-2 py-0.5 text-[10px] font-bold text-primary uppercase tracking-tight">
+                                    📱 App
+                                  </span>
+                                )}
+                                {b.player_id && playerReputation[b.player_id] && (
+                                  <span className="flex items-center gap-0.5 text-xs font-bold text-amber-600 bg-amber-500/10 px-2 py-0.5 rounded-full border border-amber-500/20">
+                                    ★ {playerReputation[b.player_id].average.toFixed(1)}
+                                  </span>
+                                )}
+                              </div>
+                              
+                              {b.playerPhone ? (
+                                <WhatsAppLink
+                                  phone={b.playerPhone}
+                                  name={b.playerName}
+                                  message={`Hola ${b.playerName}, te recordamos tu turno en ${b.courtName} el ${dateLabel} a las ${timeLabel.split("-")[0]}hs. ¡Te esperamos!`}
+                                />
+                              ) : null}
+                            </div>
+
+                            <div className="flex flex-col items-end gap-2 shrink-0">
+                              <span className={cn("rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider border", status.color, status.color.includes("bg-primary") ? "border-primary/20" : "border-transparent")}>
+                                {status.label}
+                              </span>
+                              <div className="flex items-center gap-1.5 text-base font-black text-foreground bg-secondary/50 px-3 py-1.5 rounded-lg border border-border/50">
+                                <Clock className="h-4 w-4 text-accent" />
+                                {timeLabel}
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center justify-between gap-3 border-t border-border/60 pt-3 mt-1">
+                            <div className="flex flex-col gap-0.5 text-xs text-muted-foreground">
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Total:</span>
+                                <span className="font-bold text-foreground text-sm">
+                                  ${Number(b.total_price).toLocaleString("es-AR")}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <span className="font-medium">Seña:</span>
+                                <span className="font-semibold text-foreground">
+                                  ${Number(b.deposit_amount).toLocaleString("es-AR")}
+                                </span>
+                                {b.deposit_paid ? (
+                                  <span className="text-primary font-black ml-1 text-[9px] bg-primary/10 px-1.5 py-0.5 rounded uppercase border border-primary/20">✓ PAGADA</span>
+                                ) : (
+                                  <span className="text-accent font-black ml-1 text-[9px] bg-accent/10 px-1.5 py-0.5 rounded uppercase border border-accent/20">PENDIENTE</span>
+                                )}
+                              </div>
+                            </div>
+                            <div className="flex gap-2 flex-wrap justify-end">
+                              <BookingActions bookingId={b.id} status={b.status} />
+                              {b.deposit_paid && b.status === "confirmed" && (
+                                <CollectRemainingDialog
+                                  bookingId={b.id}
+                                  totalPrice={Number(b.total_price)}
+                                  depositAmount={Number(b.deposit_amount)}
+                                  playerName={b.playerName}
+                                />
+                              )}
+                              {b.status === "completed" && b.player_id && (() => {
+                                const hasRated = playerReviews.some((r) => r.booking_id === b.id && r.reviewer_id === currentUserId)
+                                if (hasRated) return <span className="inline-flex items-center px-3 py-1 text-[10px] font-bold text-muted-foreground bg-secondary rounded-md uppercase tracking-wider">✓ Calificado</span>
+                                return <RateBookingDialog bookingId={b.id} revieweeType="player" revieweeId={b.player_id} title="Calificar jugador" />
+                              })()}
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </li>
+                  )
+                })}
+              </ul>
+            </div>
           )
         })}
-      </ul>
+      </div>
     </section>
   )
 }
