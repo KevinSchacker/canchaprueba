@@ -188,6 +188,27 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
             })}
           </div>
 
+          {/* Sub-cabecera de nombres de canchas (Solo si hay más de una cancha o para mayor claridad) */}
+          <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
+            <div className="border-r border-border bg-muted/20" />
+            {weekDays.map((day, i) => {
+              const isToday = dateKey(day) === dateKey(new Date())
+              return (
+                <div key={i} className={cn("flex border-r border-border last:border-r-0", isToday && "bg-primary/5")}>
+                  {courts.map((court) => (
+                    <div 
+                      key={court.id} 
+                      className="flex-1 border-r border-border/10 last:border-r-0 px-1 py-1 text-[8px] font-black uppercase tracking-tighter text-muted-foreground/70 text-center truncate"
+                      title={court.name}
+                    >
+                      {court.name}
+                    </div>
+                  ))}
+                </div>
+              )
+            })}
+          </div>
+
           {/* Cuerpo con horas */}
           <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
             {/* Columna de horas */}
