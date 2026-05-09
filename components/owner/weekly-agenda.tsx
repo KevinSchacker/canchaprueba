@@ -210,9 +210,6 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
 
           {/* Cuerpo con horas */}
           <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
-
-          {/* Cuerpo con horas */}
-          <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
             {/* Columna de horas */}
             <div className="flex flex-col">
               {HOURS.map((h) => (
