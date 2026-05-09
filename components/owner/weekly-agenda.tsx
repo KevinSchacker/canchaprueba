@@ -206,48 +206,60 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
             {weekDays.map((day, colIdx) => {
               const isToday = dateKey(day) === dateKey(new Date())
               const dayBookings = weekBookings.filter((b) => dateKey(new Date(b.start_time)) === dateKey(day))
-              const firstCourtId = courts[0]?.id
+              
+              // Número de canchas para dividir la columna
+              const courtCount = courts.length || 1
+              const courtWidth = 100 / courtCount
 
               return (
                 <div
                   key={colIdx}
                   className={cn(
                     "relative border-r border-border last:border-r-0",
-                    isToday && "bg-primary/5",
+                    isToday && "bg-primary/[0.03]",
                   )}
                   style={{ height: `${HOURS.length * 40}px` }}
                 >
-                  {/* Líneas de horas + zonas clickeables vacías */}
-                  {HOURS.map((h) => {
-                    const hasBookingAtHour = dayBookings.some((b) => {
-                      const bh = new Date(b.start_time).getHours()
-                      return bh === h
-                    })
-                    return (
-                      <div
-                        key={h}
-                        className={cn(
-                          "absolute w-full border-b border-border/50 group",
-                          !hasBookingAtHour && "cursor-pointer hover:bg-primary/5",
-                        )}
-                        style={{ top: `${((h - 7) / HOURS.length) * 100}%`, height: `${100 / HOURS.length}%` }}
-                        onClick={() => {
-                          if (!hasBookingAtHour) {
-                            handleEmptyCellClick(day, h, firstCourtId)
-                          }
-                        }}
-                        title={!hasBookingAtHour ? `Crear turno el ${day.getDate()} a las ${h}hs` : undefined}
-                      >
-                        {!hasBookingAtHour && (
-                          <span className="hidden group-hover:flex absolute inset-0 items-center justify-center">
-                            <Plus className="h-3 w-3 text-primary/50" />
-                          </span>
-                        )}
-                      </div>
-                    )
-                  })}
+                  {/* Líneas de horas + zonas clickeables vacías divididas por cancha */}
+                  {HOURS.map((h) => (
+                    <div
+                      key={h}
+                      className="absolute w-full border-b border-border/40 flex"
+                      style={{ top: `${((h - 7) / HOURS.length) * 100}%`, height: `${100 / HOURS.length}%` }}
+                    >
+                      {courts.map((court) => {
+                        const hasBookingAtHourAndCourt = dayBookings.some((b) => {
+                          const bh = new Date(b.start_time).getHours()
+                          const bcid = b.court_id ?? (b as any).courts?.id
+                          return bh === h && bcid === court.id
+                        })
 
-                  {/* Bloques de reservas */}
+                        return (
+                          <div
+                            key={court.id}
+                            className={cn(
+                              "h-full flex-1 border-r border-border/20 last:border-r-0 transition-colors group",
+                              !hasBookingAtHourAndCourt ? "cursor-pointer hover:bg-primary/10" : "bg-secondary/5"
+                            )}
+                            onClick={() => {
+                              if (!hasBookingAtHourAndCourt) {
+                                handleEmptyCellClick(day, h, court.id)
+                              }
+                            }}
+                            title={!hasBookingAtHourAndCourt ? `Reservar ${court.name} - ${h}:00hs` : undefined}
+                          >
+                            {!hasBookingAtHourAndCourt && (
+                              <div className="hidden group-hover:flex h-full w-full items-center justify-center">
+                                <Plus className="h-3 w-3 text-primary/40" />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  ))}
+
+                  {/* Bloques de reservas posicionados por cancha */}
                   {dayBookings.map((b) => {
                     const start = new Date(b.start_time)
                     const end = new Date(b.end_time)
@@ -257,6 +269,11 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                     const heightPct = toPercent(Math.min(endMin, RANGE_START + RANGE_TOTAL)) - topPct
                     if (heightPct <= 0) return null
 
+                    const courtId = b.court_id ?? (b as any).courts?.id
+                    const courtIndex = courts.findIndex(c => c.id === courtId)
+                    const actualIndex = courtIndex === -1 ? 0 : courtIndex
+                    const leftPos = actualIndex * courtWidth
+                    
                     const colors = getStatusColors(b.status, b.deposit_paid)
                     const timeLabel = `${String(start.getHours()).padStart(2, "0")}:${String(start.getMinutes()).padStart(2, "0")}`
 
@@ -268,16 +285,24 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                           setSelected(selected?.id === b.id ? null : b)
                         }}
                         className={cn(
-                          "absolute inset-x-0.5 rounded-md border px-1.5 py-0.5 text-left transition-opacity hover:opacity-90 z-10",
+                          "absolute rounded-md border px-1.5 py-0.5 text-left transition-all hover:ring-2 hover:ring-primary/20 z-10 shadow-sm",
                           colors.bg,
                           colors.border,
                         )}
-                        style={{ top: `${topPct}%`, height: `${heightPct}%`, minHeight: "24px" }}
+                        style={{ 
+                          top: `${topPct}%`, 
+                          height: `${heightPct}%`, 
+                          left: `${leftPos}%`, 
+                          width: `${courtWidth - 1}%`,
+                          minHeight: "24px" 
+                        }}
                       >
-                        <p className={cn("truncate text-[10px] font-semibold leading-tight", colors.text)}>
+                        <p className={cn("truncate text-[9px] font-bold leading-tight", colors.text)}>
                           {(b.playerName ?? b.profiles?.full_name ?? b.guest_name ?? "Jugador").split(" ")[0]}
                         </p>
-                        <p className="truncate text-[9px] text-muted-foreground">{timeLabel} · {b.courtName ?? b.courts?.name ?? "Cancha"}</p>
+                        {courtCount === 1 && (
+                          <p className="truncate text-[8px] text-muted-foreground/80">{timeLabel} · {b.courtName ?? (b as any).courts?.name}</p>
+                        )}
                       </button>
                     )
                   })}
