@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { ChevronLeft, ChevronRight, User, BanknoteIcon, Plus } from "lucide-react"
+import { ChevronLeft, ChevronRight, User, BanknoteIcon, Plus, X } from "lucide-react"
 
 const HOURS = Array.from({ length: 16 }, (_, i) => i + 7) // 7hs a 22hs
 const DAY_SHORT = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"]
@@ -163,7 +163,7 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
 
       {/* Grilla */}
       <div className="overflow-x-auto rounded-xl border border-border">
-        <div className="min-w-[640px]">
+        <div style={{ minWidth: `${Math.max(640, 7 * courts.length * 90 + 48)}px` }}>
           {/* Cabecera de días con sub-columnas de canchas integradas */}
           <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, minmax(0, 1fr))" }}>
             <div className="border-r border-border bg-muted/10" />
@@ -198,19 +198,24 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                         <div 
                           key={court.id} 
                           className={cn(
-                            "flex items-center justify-center border-r border-border/20 last:border-r-0 overflow-hidden",
-                            isClosed && "bg-muted/40"
+                            "flex items-center justify-center border-r border-border/20 last:border-r-0 overflow-hidden relative",
+                            isClosed ? "bg-destructive/10" : "bg-transparent"
                           )}
                         >
                           <span 
                             className={cn(
-                              "text-[9px] font-bold uppercase truncate px-1",
-                              isClosed ? "text-muted-foreground/40" : "text-muted-foreground/60"
+                              "text-[10px] font-bold uppercase truncate px-2",
+                              isClosed ? "text-destructive" : "text-muted-foreground/70"
                             )}
                             title={court.name}
                           >
-                            {court.name} {isClosed && "(Cerrada)"}
+                            {court.name}
                           </span>
+                          {isClosed && (
+                            <div className="absolute right-1 text-destructive flex items-center justify-center" title="Cancha cerrada">
+                              <X className="h-3 w-3" strokeWidth={3} />
+                            </div>
+                          )}
                         </div>
                       )
                     })}
@@ -277,13 +282,13 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                             className={cn(
                               "h-full border-r border-border/20 last:border-r-0 transition-colors group relative",
                               isClosed 
-                                ? "bg-muted/10 cursor-not-allowed" 
+                                ? "bg-destructive/5 cursor-not-allowed" 
                                 : !hasBookingAtHourAndCourt 
                                   ? "cursor-pointer hover:bg-primary/10" 
                                   : "bg-secondary/5"
                             )}
                             style={{ 
-                              backgroundImage: isClosed ? "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.02) 5px, rgba(0,0,0,0.02) 10px)" : undefined
+                              backgroundImage: isClosed ? "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.05) 5px, rgba(239, 68, 68, 0.05) 10px)" : undefined
                             }}
                             onClick={() => {
                               if (!hasBookingAtHourAndCourt && !isClosed) {
@@ -298,8 +303,10 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                               </div>
                             )}
                             {isClosed && h === 7 && (
-                              <div className="absolute inset-x-0 top-1 text-center">
-                                <span className="text-[6px] font-black uppercase text-muted-foreground/30 leading-none">Cerrada</span>
+                              <div className="absolute inset-x-0 top-1 text-center flex flex-col items-center">
+                                <span className="bg-destructive/20 text-destructive text-[8px] font-black uppercase px-1 py-0.5 rounded-sm tracking-widest mt-1">
+                                  Cerrada
+                                </span>
                               </div>
                             )}
                           </div>
