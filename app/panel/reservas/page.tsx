@@ -64,6 +64,10 @@ export default async function OwnerBookingsPage({
   const { data: courts } = await adminDb.from("courts").select("id, name, active").eq("venue_id", venue.id)
   const courtIds = (courts ?? []).map((c) => c.id)
 
+  const { data: courtSchedules } = courtIds.length > 0
+    ? await adminDb.from("court_schedules").select("court_id, day_of_week, open_time, close_time").in("court_id", courtIds)
+    : { data: [] }
+
   // 2. Reservas de esas canchas (incluye guest_name/guest_phone para turnos presenciales)
   const { data: rawBookings } = courtIds.length > 0
     ? await adminDb
@@ -280,7 +284,7 @@ export default async function OwnerBookingsPage({
           </EmptyHeader>
         </Empty>
       ) : view === "agenda" ? (
-        <WeeklyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
+        <WeeklyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} schedules={courtSchedules ?? []} />
       ) : (
         <div className="flex flex-col gap-10">
           <Section

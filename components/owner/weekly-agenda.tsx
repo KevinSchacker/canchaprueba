@@ -33,6 +33,7 @@ interface Props {
   bookings: BookingSlot[]
   /** Lista de canchas disponibles para crear turno rápido al hacer clic en celda vacía */
   courts?: { id: string; name: string; active?: boolean }[]
+  schedules?: { court_id: string; day_of_week: number; open_time: string; close_time: string }[]
   venueId?: string
 }
 
@@ -74,7 +75,7 @@ function dateKey(d: Date) {
   return d.toISOString().slice(0, 10)
 }
 
-export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
+export function WeeklyAgenda({ bookings, courts = [], schedules = [], venueId }: Props) {
   const router = useRouter()
   const [anchor, setAnchor] = useState(() => new Date())
   const [selected, setSelected] = useState<BookingSlot | null>(null)
@@ -193,7 +194,11 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                     style={{ gridTemplateColumns: `repeat(${courts.length || 1}, minmax(0, 1fr))` }}
                   >
                     {courts.map((court) => {
-                      const isClosed = court.active === false
+                      const isCourtGloballyClosed = court.active === false
+                      const dayOfWeek = day.getDay()
+                      const hasSchedule = schedules.some(s => s.court_id === court.id && s.day_of_week === dayOfWeek)
+                      const isClosed = isCourtGloballyClosed || !hasSchedule
+
                       return (
                         <div 
                           key={court.id} 
@@ -269,7 +274,11 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
                       }}
                     >
                       {courts.map((court) => {
-                        const isClosed = court.active === false
+                        const isCourtGloballyClosed = court.active === false
+                        const dayOfWeek = day.getDay()
+                        const hasSchedule = schedules.some(s => s.court_id === court.id && s.day_of_week === dayOfWeek)
+                        const isClosed = isCourtGloballyClosed || !hasSchedule
+                        
                         const hasBookingAtHourAndCourt = dayBookings.some((b) => {
                           const bh = new Date(b.start_time).getHours()
                           const bcid = b.court_id ?? (b as any).courts?.id
