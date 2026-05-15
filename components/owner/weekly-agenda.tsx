@@ -276,8 +276,27 @@ export function WeeklyAgenda({ bookings, courts = [], schedules = [], venueId }:
                       {courts.map((court) => {
                         const isCourtGloballyClosed = court.active === false
                         const dayOfWeek = day.getDay()
-                        const hasSchedule = schedules.some(s => s.court_id === court.id && s.day_of_week === dayOfWeek)
-                        const isClosed = isCourtGloballyClosed || !hasSchedule
+                        const courtDaySchedules = schedules.filter(s => s.court_id === court.id && s.day_of_week === dayOfWeek)
+                        const isClosedDay = isCourtGloballyClosed || courtDaySchedules.length === 0
+                        
+                        let isClosedHour = isClosedDay
+                        if (!isClosedDay && courtDaySchedules.length > 0) {
+                          const isWithinSchedule = courtDaySchedules.some(sch => {
+                            if (!sch.open_time || !sch.close_time) return false
+                            const openH = parseInt(sch.open_time.split(":")[0], 10)
+                            let closeH = parseInt(sch.close_time.split(":")[0], 10)
+                            const closeM = parseInt(sch.close_time.split(":")[1], 10)
+                            
+                            // Si cierra a medianoche o a la madrugada y estamos en la agenda (hasta 22hs), 
+                            // lo tratamos como abierto hasta el final.
+                            if (closeH === 0 || closeH < 7) closeH = 24
+                            // Si cierra a las 15:30, la celda de las 15:00 está abierta. Si cierra a las 15:00, la celda de las 15:00 está cerrada.
+                            const effectiveCloseH = closeM > 0 ? closeH + 1 : closeH
+                            
+                            return h >= openH && h < effectiveCloseH
+                          })
+                          isClosedHour = !isWithinSchedule
+                        }
                         
                         const hasBookingAtHourAndCourt = dayBookings.some((b) => {
                           const bh = new Date(b.start_time).getHours()
@@ -290,28 +309,28 @@ export function WeeklyAgenda({ bookings, courts = [], schedules = [], venueId }:
                             key={court.id}
                             className={cn(
                               "h-full border-r border-border/20 last:border-r-0 transition-colors group relative",
-                              isClosed 
+                              isClosedHour 
                                 ? "bg-destructive/5 cursor-not-allowed" 
                                 : !hasBookingAtHourAndCourt 
                                   ? "cursor-pointer hover:bg-primary/10" 
                                   : "bg-secondary/5"
                             )}
                             style={{ 
-                              backgroundImage: isClosed ? "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.05) 5px, rgba(239, 68, 68, 0.05) 10px)" : undefined
+                              backgroundImage: isClosedHour ? "repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(239, 68, 68, 0.05) 5px, rgba(239, 68, 68, 0.05) 10px)" : undefined
                             }}
                             onClick={() => {
-                              if (!hasBookingAtHourAndCourt && !isClosed) {
+                              if (!hasBookingAtHourAndCourt && !isClosedHour) {
                                 handleEmptyCellClick(day, h, court.id)
                               }
                             }}
-                            title={isClosed ? "Cancha cerrada" : !hasBookingAtHourAndCourt ? `Reservar ${court.name} - ${h}:00hs` : undefined}
+                            title={isClosedHour ? "Cancha cerrada" : !hasBookingAtHourAndCourt ? `Reservar ${court.name} - ${h}:00hs` : undefined}
                           >
-                            {!hasBookingAtHourAndCourt && !isClosed && (
+                            {!hasBookingAtHourAndCourt && !isClosedHour && (
                               <div className="hidden group-hover:flex h-full w-full items-center justify-center">
                                 <Plus className="h-3 w-3 text-primary/40" />
                               </div>
                             )}
-                            {isClosed && h === 7 && (
+                            {isClosedHour && (h === 7 || (!isClosedDay && h === parseInt(courtDaySchedules[0]?.close_time?.split(":")[0], 10))) && (
                               <div className="absolute inset-x-0 top-1 text-center flex flex-col items-center">
                                 <span className="bg-destructive/20 text-destructive text-[8px] font-black uppercase px-1 py-0.5 rounded-sm tracking-widest mt-1">
                                   Cerrada
