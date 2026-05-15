@@ -7,7 +7,7 @@ import { BottomNav } from "@/components/play/bottom-nav"
 import { PlayHeader } from "@/components/play/play-header"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
-import { Mail, User, Star } from "lucide-react"
+import { Mail, User, Star, FileText, LogOut } from "lucide-react"
 import Link from "next/link"
 
 export const dynamic = "force-dynamic"
@@ -102,6 +102,23 @@ export default async function ProfilePage() {
                   ))}
                 </ul>
               )}
+            </CardContent>
+          </Card>
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Configuración y legales</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col gap-3">
+              <Link
+                href="/terminos"
+                className="flex items-center gap-3 rounded-lg border border-border px-4 py-3 text-sm font-medium text-foreground hover:bg-secondary transition-colors"
+              >
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                Términos y Condiciones
+              </Link>
+              <div className="rounded-lg border border-destructive/20 px-4 py-3">
+                <LogoutButton />
+              </div>
             </CardContent>
           </Card>
         </div>

@@ -186,6 +186,9 @@ export default async function HomePage() {
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-3 px-4 py-6 text-sm text-muted-foreground md:flex-row">
           <Logo showText />
           <p>&copy; {new Date().getFullYear()} CanchAR · Misiones, Argentina</p>
+          <Link href="/terminos" className="hover:text-foreground underline underline-offset-4 transition-colors">
+            Términos y Condiciones
+          </Link>
         </div>
       </footer>
     </main>
