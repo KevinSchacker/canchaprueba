@@ -58,7 +58,7 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
   const [error, setError] = useState<string | null>(null)
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
-  const activeSports = sports.filter((s) => s.active)
+  const activeSports = sports
   
   // Si initial.sportSlug no está en activeSports pero la cancha ya lo tiene, lo forzamos a estar en la lista (para no romper la vista de edición)
   if (initial && initial.sportSlug && !activeSports.find(s => s.slug === initial.sportSlug)) {
@@ -201,7 +201,7 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
             <div className="flex flex-wrap gap-2">
               {sports.map((s) => {
                 const isActive = sportSlug === s.slug
-                const disabled = !s.active
+                const disabled = false // Ahora todos los deportes que llegan acá están habilitados por el Admin
                 return (
                   <button
                     key={s.id}
