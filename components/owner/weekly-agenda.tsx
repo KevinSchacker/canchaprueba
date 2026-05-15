@@ -165,7 +165,7 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
       <div className="overflow-x-auto rounded-xl border border-border">
         <div className="min-w-[640px]">
           {/* Cabecera de días con sub-columnas de canchas integradas */}
-          <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
+          <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, minmax(0, 1fr))" }}>
             <div className="border-r border-border bg-muted/10" />
             {weekDays.map((day, i) => {
               const isToday = dateKey(day) === dateKey(new Date())
@@ -221,7 +221,7 @@ export function WeeklyAgenda({ bookings, courts = [], venueId }: Props) {
           </div>
 
           {/* Cuerpo con horas */}
-          <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, 1fr)" }}>
+          <div className="relative grid" style={{ gridTemplateColumns: "48px repeat(7, minmax(0, 1fr))" }}>
             {/* Columna de horas */}
             <div className="flex flex-col">
               {HOURS.map((h) => (
