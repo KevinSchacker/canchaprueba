@@ -38,7 +38,7 @@ export default async function PlayPage({
   // Cargar deportes
   const { data: sportsData } = await supabase.from("sports").select("id, slug, name, active").order("name")
   const sports = sportsData ?? []
-  const sportSlug = params.sport ?? sports[0]?.slug ?? "padel"
+  const sportSlug = params.sport ?? "padel"
   const selectedSport = sports.find((s) => s.slug === sportSlug)
 
   // Cargar canchas filtradas

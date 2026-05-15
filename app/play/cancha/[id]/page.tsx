@@ -4,6 +4,7 @@ import { notFound, redirect } from "next/navigation"
 import Link from "next/link"
 import { ArrowLeft, MapPin, Phone, Sun, Lightbulb, Clock, Users, Info, ShieldAlert } from "lucide-react"
 import { getAvailableSlots, nextDays, toDateKey } from "@/lib/booking/slots"
+import { checkPlayerPenalty } from "@/lib/booking/penalty"
 import { DateStrip } from "@/components/play/date-strip"
 import { SlotGrid } from "@/components/play/slot-grid"
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "@/components/ui/carousel"
@@ -94,15 +95,8 @@ export default async function CourtDetailPage({
     ? (courtReviews.reduce((acc, r) => acc + r.rating, 0) / courtReviews.length).toFixed(1)
     : null
 
-  // ── CRM: verificar si el jugador tiene 4+ ausencias en cualquier cancha del complejo ──
-  const { count: noShowCount } = await supabase
-    .from("bookings")
-    .select("id", { count: "exact", head: true })
-    .eq("player_id", user.id)
-    .eq("status", "no_show")
-
-  const NO_SHOW_THRESHOLD = 4
-  const forceFullPayment = (noShowCount ?? 0) >= NO_SHOW_THRESHOLD
+  // ── CRM: Penalidad por ausencias (pago completo si >= 4 faltas sin redimir) ──
+  const forceFullPayment = await checkPlayerPenalty(supabase, user.id)
 
 
   return (
@@ -241,6 +235,9 @@ export default async function CourtDetailPage({
             <p className="text-muted-foreground">
               Hasta {c.cancellation_hours_before}hs antes del turno. <br />
               Reembolso: {c.cancellation_refund_pct}% de la seña.
+            </p>
+            <p className="mt-2 text-xs text-muted-foreground border-t border-border/50 pt-2">
+              *Jugadores con 4 o más ausencias deberán abonar el 100% por adelantado. Esta penalidad se quita al cumplir con 3 reservas seguidas.
             </p>
           </div>
           {c.price_rules && (c.price_rules.night?.price || c.price_rules.weekend?.price) && (

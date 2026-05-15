@@ -17,7 +17,7 @@ interface Props {
 export function SearchFilters({ sports, cities }: Props) {
   const router = useRouter()
   const searchParams = useSearchParams()
-  const currentSport = searchParams.get("sport") ?? sports.find((s) => s.active)?.slug ?? ""
+  const currentSport = searchParams.get("sport") ?? "padel"
   const currentCity = searchParams.get("city") ?? ""
   const [city, setCity] = useState(currentCity)
 

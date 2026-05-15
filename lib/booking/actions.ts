@@ -3,6 +3,7 @@
 import { createClient } from "@/lib/supabase/server"
 import { revalidatePath } from "next/cache"
 import { redirect } from "next/navigation"
+import { checkPlayerPenalty } from "./penalty"
 
 type CreateBookingInput = {
   courtId: string
@@ -32,7 +33,11 @@ export async function createBooking(input: CreateBookingInput) {
   }
 
   const totalPrice = input.totalPrice
-  const depositAmount = Math.round((totalPrice * court.deposit_percentage) / 100)
+  
+  const forceFullPayment = await checkPlayerPenalty(supabase, user.id)
+  const depositAmount = forceFullPayment
+    ? totalPrice
+    : Math.round((totalPrice * court.deposit_percentage) / 100)
 
   const { data, error } = await supabase
     .from("bookings")
