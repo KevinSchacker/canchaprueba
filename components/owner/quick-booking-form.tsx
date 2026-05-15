@@ -44,6 +44,7 @@ export function QuickBookingForm({ courts, defaultDate, defaultTime, defaultCour
   const [courtId, setCourtId] = useState(defaultCourtId ?? courts[0]?.id ?? "")
   const [date, setDate] = useState(defaultDate ?? todayStr)
   const [time, setTime] = useState(defaultTime ?? `${nowHH}:00`)
+  const [duration, setDuration] = useState<number>(0)
   const [guestName, setGuestName] = useState("")
   const [guestPhone, setGuestPhone] = useState("")
   const [paymentMethod, setPaymentMethod] = useState("cash")
@@ -51,8 +52,21 @@ export function QuickBookingForm({ courts, defaultDate, defaultTime, defaultCour
   const [notes, setNotes] = useState("")
 
   const selectedCourt = courts.find((c) => c.id === courtId)
+  
+  const slotDurationMinutes = selectedCourt?.slot_duration_minutes || 60
+  const maxDuration = 180;
+  const minMultiplier = slotDurationMinutes === 30 ? 2 : 1;
+  const durationOptions: number[] = [];
+  for (let m = minMultiplier; (m * slotDurationMinutes) <= maxDuration; m++) {
+    durationOptions.push(m * slotDurationMinutes);
+  }
+
+  const currentDuration = duration || durationOptions[0] || slotDurationMinutes;
+  const slotsNeeded = Math.max(1, Math.ceil(currentDuration / slotDurationMinutes));
+  const totalPrice = selectedCourt ? selectedCourt.price_per_slot * slotsNeeded : 0;
+  
   const depositAmount = selectedCourt
-    ? Math.round((selectedCourt.deposit_percentage / 100) * selectedCourt.price_per_slot)
+    ? Math.round((selectedCourt.deposit_percentage / 100) * totalPrice)
     : 0
 
   const onSubmit = (e: React.FormEvent) => {
@@ -72,6 +86,7 @@ export function QuickBookingForm({ courts, defaultDate, defaultTime, defaultCour
         paymentMethod,
         depositPaid,
         notes,
+        durationMinutes: currentDuration,
       })
       if (!res.ok) {
         setError(res.error ?? "Error al crear la reserva.")
@@ -138,6 +153,23 @@ export function QuickBookingForm({ courts, defaultDate, defaultTime, defaultCour
                   onChange={(e) => setTime(e.target.value)}
                 />
               </Field>
+              <Field>
+                <FieldLabel>
+                  <Clock className="inline h-3.5 w-3.5 mr-1 text-accent" />
+                  Duración *
+                </FieldLabel>
+                <select
+                  className="flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  value={currentDuration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                >
+                  {durationOptions.map((d) => (
+                    <option key={d} value={d}>
+                      {d >= 60 ? `${d / 60} hs` : `${d} min`}
+                    </option>
+                  ))}
+                </select>
+              </Field>
             </div>
 
             {/* Datos del cliente */}
@@ -173,7 +205,7 @@ export function QuickBookingForm({ courts, defaultDate, defaultTime, defaultCour
               <div className="rounded-lg bg-secondary/40 p-4 text-sm">
                 <div className="flex items-center gap-2 font-medium text-foreground">
                   <DollarSign className="h-4 w-4 text-primary" />
-                  Precio del turno: <strong>${selectedCourt.price_per_slot.toLocaleString("es-AR")}</strong>
+                  Precio del turno: <strong>${totalPrice.toLocaleString("es-AR")}</strong>
                   <span className="text-muted-foreground ml-auto">
                     Seña ({selectedCourt.deposit_percentage}%): ${depositAmount.toLocaleString("es-AR")}
                   </span>

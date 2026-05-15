@@ -363,6 +363,7 @@ export type QuickBookingInput = {
   paymentMethod: string
   depositPaid: boolean
   notes?: string
+  durationMinutes?: number
 }
 
 export async function createQuickBooking(input: QuickBookingInput) {
@@ -384,9 +385,26 @@ export async function createQuickBooking(input: QuickBookingInput) {
   // Calcular start/end
   const [hh, mm] = input.time.split(":").map(Number)
   const startDate = new Date(`${input.date}T${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}:00`)
-  const endDate = new Date(startDate.getTime() + c.slot_duration_minutes * 60_000)
+  const duration = input.durationMinutes || c.slot_duration_minutes
+  const endDate = new Date(startDate.getTime() + duration * 60_000)
 
-  const depositAmount = Math.round((c.deposit_percentage / 100) * c.price_per_slot)
+  // Chequear superposición (conflictos)
+  const { data: conflicts } = await supabase
+    .from("bookings")
+    .select("id")
+    .eq("court_id", input.courtId)
+    .in("status", ["pending", "confirmed"])
+    .lt("start_time", endDate.toISOString())
+    .gt("end_time", startDate.toISOString())
+    .limit(1)
+
+  if (conflicts && conflicts.length > 0) {
+    return { ok: false as const, error: "Ya existe una reserva que se superpone con este horario." }
+  }
+
+  const slotsNeeded = Math.max(1, Math.ceil(duration / c.slot_duration_minutes))
+  const totalPrice = c.price_per_slot * slotsNeeded
+  const depositAmount = Math.round((c.deposit_percentage / 100) * totalPrice)
 
   const { data, error } = await supabase
     .from("bookings")
@@ -398,7 +416,7 @@ export async function createQuickBooking(input: QuickBookingInput) {
       start_time: startDate.toISOString(),
       end_time: endDate.toISOString(),
       status: input.depositPaid ? "confirmed" : "pending",
-      total_price: c.price_per_slot,
+      total_price: totalPrice,
       deposit_amount: depositAmount,
       deposit_paid: input.depositPaid,
       notes: input.notes ? `[${input.paymentMethod}] ${input.notes}` : `[${input.paymentMethod}]`,

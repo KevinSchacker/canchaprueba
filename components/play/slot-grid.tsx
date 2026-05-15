@@ -27,9 +27,14 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
   const [error, setError] = useState<string | null>(null)
   const [pending, startTransition] = useTransition()
 
-  // Durations to offer (in minutes)
-  const durationOptions = slotDurationMinutes === 30 ? [60, 90, 120] : [slotDurationMinutes]
-  const slotsNeeded = Math.max(1, Math.ceil(duration / slotDurationMinutes))
+  // Durations to offer (in minutes) up to 3 hours (180 mins)
+  const maxDuration = 180;
+  const minMultiplier = slotDurationMinutes === 30 ? 2 : 1;
+  const durationOptions: number[] = [];
+  for (let m = minMultiplier; (m * slotDurationMinutes) <= maxDuration; m++) {
+    durationOptions.push(m * slotDurationMinutes);
+  }
+  const slotsNeeded = Math.max(1, Math.ceil(duration / slotDurationMinutes));
 
   const handleSelectSlot = (startIndex: number) => {
     // Check if enough consecutive slots are available
@@ -81,7 +86,7 @@ export function SlotGrid({ courtId, pricePerSlot, depositPercentage, slots, slot
 
   return (
     <div className="flex flex-col gap-4">
-      {slotDurationMinutes === 30 && (
+      {durationOptions.length > 1 && (
         <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
           <span className="text-sm font-medium text-foreground">Duración del turno</span>
           <Select value={duration.toString()} onValueChange={handleDurationChange}>

@@ -5,7 +5,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { CalendarCheck, Clock, MapPin, User, AlertTriangle } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
-import { WeeklyAgenda } from "@/components/owner/weekly-agenda"
+import { DailyAgenda } from "@/components/owner/daily-agenda"
 import { WhatsAppLink } from "@/components/owner/whatsapp-link"
 import { CollectRemainingDialog } from "@/components/owner/collect-remaining-dialog"
 import { cn } from "@/lib/utils"
@@ -245,7 +245,7 @@ export default async function OwnerBookingsPage({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          Agenda semanal
+          Agenda diaria
         </a>
       </div>
 
@@ -280,7 +280,7 @@ export default async function OwnerBookingsPage({
           </EmptyHeader>
         </Empty>
       ) : view === "agenda" ? (
-        <WeeklyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
+        <DailyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
       ) : (
         <div className="flex flex-col gap-10">
           <Section
@@ -363,7 +363,7 @@ function Section({
                 </div>
               )}
               <ul className="flex flex-col gap-4">
-                {groupItems.map((b) => {
+                {(groupItems as any[]).map((b: any) => {
                   const start = new Date(b.start_time)
                   const end = new Date(b.end_time)
                   const dateLabel = start.toLocaleDateString("es-AR", { weekday: "short", day: "numeric", month: "short" })
