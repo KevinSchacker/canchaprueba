@@ -80,7 +80,7 @@ export default async function HomePage() {
               Hecho en Misiones
             </div>
             <h1 className="text-balance text-4xl font-semibold leading-tight tracking-tight text-foreground md:text-6xl">
-              Reservá tu cancha de <span className="text-primary">pádel</span> en segundos.
+              Reservá tu cancha en segundos.
             </h1>
             <p className="text-pretty text-lg leading-relaxed text-muted-foreground">
               Encontrá complejos cerca tuyo, mirá disponibilidad en tiempo real y asegurá tu turno con una seña. Pagás
@@ -94,9 +94,6 @@ export default async function HomePage() {
                 <Link href="/auth/sign-up?role=owner">Soy dueño de canchas</Link>
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground">
-              Próximamente: tenis, fútbol 5, básquet y vóley en toda la provincia.
-            </p>
           </div>
 
           {/* Hero card */}

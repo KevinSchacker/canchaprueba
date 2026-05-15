@@ -39,24 +39,20 @@ export function SearchFilters({ sports, cities }: Props) {
       <div className="flex gap-2 overflow-x-auto pb-1" role="tablist" aria-label="Deportes">
         {sports.map((s) => {
           const isActive = s.slug === currentSport
-          const disabled = !s.active
           return (
             <button
               key={s.id}
               role="tab"
               aria-selected={isActive}
-              disabled={disabled}
               onClick={() => setParam("sport", s.slug)}
               className={cn(
                 "shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-colors",
                 isActive
                   ? "border-primary bg-primary text-primary-foreground"
                   : "border-border bg-card text-foreground hover:bg-secondary",
-                disabled && "cursor-not-allowed opacity-50",
               )}
             >
               {s.name}
-              {disabled && <span className="ml-2 text-xs">próximamente</span>}
             </button>
           )
         })}
