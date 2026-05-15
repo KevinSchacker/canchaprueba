@@ -5,7 +5,7 @@ import { Empty, EmptyDescription, EmptyHeader, EmptyMedia, EmptyTitle } from "@/
 import { CalendarCheck, Clock, MapPin, User, AlertTriangle } from "lucide-react"
 import { BookingActions } from "@/components/owner/booking-actions"
 import { RateBookingDialog } from "@/components/play/rate-booking-dialog"
-import { DailyAgenda } from "@/components/owner/daily-agenda"
+import { WeeklyAgenda } from "@/components/owner/weekly-agenda"
 import { WhatsAppLink } from "@/components/owner/whatsapp-link"
 import { CollectRemainingDialog } from "@/components/owner/collect-remaining-dialog"
 import { cn } from "@/lib/utils"
@@ -245,7 +245,7 @@ export default async function OwnerBookingsPage({
               : "text-muted-foreground hover:text-foreground",
           )}
         >
-          Agenda diaria
+          Agenda semanal
         </a>
       </div>
 
@@ -280,7 +280,7 @@ export default async function OwnerBookingsPage({
           </EmptyHeader>
         </Empty>
       ) : view === "agenda" ? (
-        <DailyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
+        <WeeklyAgenda bookings={list as any} courts={courts ?? []} venueId={venue.id} />
       ) : (
         <div className="flex flex-col gap-10">
           <Section
