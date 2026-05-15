@@ -101,3 +101,29 @@ export async function devOnlyClearAllBookings() {
   revalidatePath("/panel")
   return { ok: true }
 }
+
+export async function setVenueAllowedSports(formData: FormData) {
+  const auth = await ensureAdmin()
+  if (!auth.ok || !auth.supabase) return { error: auth.ok ? "Error interno" : auth.error }
+
+  const venueId = formData.get("venue_id") as string
+  const allowedSportsStr = formData.get("allowed_sports") as string
+  
+  if (!venueId || !allowedSportsStr) return { error: "Faltan datos" }
+
+  let allowedSports: string[]
+  try {
+    allowedSports = JSON.parse(allowedSportsStr)
+  } catch {
+    return { error: "Formato inválido" }
+  }
+
+  const { error } = await auth.supabase
+    .from("venues")
+    .update({ allowed_sports: allowedSports })
+    .eq("id", venueId)
+
+  if (error) return { error: error.message }
+  revalidatePath("/admin/complejos")
+  return { ok: true }
+}

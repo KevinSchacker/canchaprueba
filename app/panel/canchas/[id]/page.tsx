@@ -18,7 +18,7 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
     redirect("/auth/login")
   }
 
-  const { data: venue } = await supabase.from("venues").select("id").eq("owner_id", user.id).maybeSingle()
+  const { data: venue } = await supabase.from("venues").select("id, allowed_sports").eq("owner_id", user.id).maybeSingle()
   if (!venue) {
     redirect("/panel/complejo")
   }
@@ -45,7 +45,10 @@ export default async function EditCourtPage({ params }: { params: Promise<{ id: 
     .eq("court_id", id)
     .order("day_of_week")
 
-  const { data: sports } = await supabase.from("sports").select("id, slug, name, active").order("name")
+  const { data: allSports } = await supabase.from("sports").select("id, slug, name, active").order("name")
+  
+  const allowedSlugs = Array.isArray(venue.allowed_sports) ? venue.allowed_sports : ["padel"]
+  const sports = (allSports || []).filter(s => allowedSlugs.includes(s.slug))
   
   const { data: images } = await supabase
     .from("court_images")

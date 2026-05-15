@@ -2,12 +2,19 @@ import { createClient } from "@/lib/supabase/server"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MapPin } from "lucide-react"
+import { VenueSportsManager } from "@/components/admin/venue-sports-manager"
+
+export const dynamic = "force-dynamic"
 
 export default async function ComplejosPage() {
   const supabase = await createClient()
+  
+  // Obtenemos todos los deportes
+  const { data: allSports } = await supabase.from("sports").select("id, slug, name").order("name")
+  
   const { data: venues } = await supabase
     .from("venues")
-    .select("id, name, city, address, active, profiles!venues_owner_id_fkey(full_name), courts(id)")
+    .select("id, name, city, address, active, allowed_sports, profiles!venues_owner_id_fkey(full_name), courts(id)")
     .order("created_at", { ascending: false })
 
   return (
@@ -33,6 +40,12 @@ export default async function ComplejosPage() {
                   </div>
                 </div>
                 <Badge variant={v.active ? "default" : "outline"}>{v.active ? "Activo" : "Inactivo"}</Badge>
+                
+                <VenueSportsManager 
+                  venueId={v.id} 
+                  allSports={allSports || []} 
+                  allowedSports={v.allowed_sports} 
+                />
               </li>
             ))}
             {(!venues || venues.length === 0) && (

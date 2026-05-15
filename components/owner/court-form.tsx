@@ -59,6 +59,13 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({})
 
   const activeSports = sports.filter((s) => s.active)
+  
+  // Si initial.sportSlug no está en activeSports pero la cancha ya lo tiene, lo forzamos a estar en la lista (para no romper la vista de edición)
+  if (initial && initial.sportSlug && !activeSports.find(s => s.slug === initial.sportSlug)) {
+    const hiddenSport = sports.find(s => s.slug === initial.sportSlug)
+    if (hiddenSport) activeSports.push(hiddenSport)
+  }
+
   const [sportSlug, setSportSlug] = useState(initial?.sportSlug ?? activeSports[0]?.slug ?? "padel")
   const [name, setName] = useState(initial?.name ?? "Cancha 1")
   const [surface, setSurface] = useState(initial?.surface ?? "Césped sintético")
@@ -74,7 +81,17 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
 
   // --- Nuevos campos ---
   const [description, setDescription] = useState(initial?.description ?? "")
-  const [maxPlayers, setMaxPlayers] = useState(initial?.maxPlayers ?? 4)
+  
+  // Default de capacidad según el deporte
+  const getDefaultPlayers = (slug: string) => {
+    if (slug === "padel" || slug === "tenis") return 4
+    if (slug === "futbol_5") return 10
+    if (slug === "futbol_7") return 14
+    if (slug === "basquet") return 10
+    return 4
+  }
+  
+  const [maxPlayers, setMaxPlayers] = useState(initial?.maxPlayers ?? getDefaultPlayers(sportSlug))
   const [cancellationHours, setCancellationHours] = useState(initial?.cancellationHoursBefore ?? 24)
   const [cancellationRefund, setCancellationRefund] = useState(initial?.cancellationRefundPct ?? 100)
   const [maxDaysAhead, setMaxDaysAhead] = useState(initial?.maxDaysAhead ?? 14)
@@ -190,7 +207,16 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
                     key={s.id}
                     type="button"
                     disabled={disabled}
-                    onClick={() => setSportSlug(s.slug)}
+                    onClick={() => {
+                      setSportSlug(s.slug)
+                      if (!initial) {
+                        setMaxPlayers(getDefaultPlayers(s.slug))
+                        if (s.slug === "padel") setSurface("Césped sintético")
+                        if (s.slug === "futbol" || s.slug === "futbol_5" || s.slug === "futbol_7") setSurface("Césped sintético")
+                        if (s.slug === "tenis") setSurface("Polvo de ladrillo")
+                        if (s.slug === "basquet") setSurface("Parquet")
+                      }
+                    }}
                     title={disabled ? "Disponible pronto — te avisamos" : undefined}
                     className={cn(
                       "rounded-full border px-3 py-1.5 text-sm transition-colors",
@@ -222,7 +248,7 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
               <FieldLabel htmlFor="surface">Superficie</FieldLabel>
               <Input
                 id="surface"
-                placeholder="Cemento, césped sintético..."
+                placeholder={sportSlug.includes("futbol") ? "Sintético, natural, parquet..." : sportSlug === "tenis" ? "Polvo de ladrillo, cemento, césped..." : "Cemento, césped sintético..."}
                 value={surface}
                 onChange={(e) => setSurface(e.target.value)}
               />
@@ -475,7 +501,11 @@ export function CourtForm({ venueId, sports, initial, siblingsSchedules }: Props
             className={cn("max-w-[120px]", fieldErrors.maxPlayers && "border-destructive")}
           />
           {fieldErrors.maxPlayers && <p className="text-xs text-destructive">{fieldErrors.maxPlayers}</p>}
-          <FieldDescription>Útil para canchas de fútbol 7, 8, 9 donde el número varía.</FieldDescription>
+          <FieldDescription>
+            {sportSlug.includes("futbol") ? "Útil para indicar si la cancha es para 10, 14 o 22 jugadores." : 
+             sportSlug === "padel" || sportSlug === "tenis" ? "Por lo general son 2 o 4 jugadores." :
+             "Cantidad de personas permitidas en la cancha."}
+          </FieldDescription>
         </Field>
       </SectionCard>
 

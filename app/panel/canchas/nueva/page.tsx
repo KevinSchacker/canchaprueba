@@ -13,10 +13,14 @@ export default async function NewCourtPage() {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { data: venue } = await supabase.from("venues").select("id").eq("owner_id", user!.id).maybeSingle()
+  const { data: venue } = await supabase.from("venues").select("id, allowed_sports").eq("owner_id", user!.id).maybeSingle()
   if (!venue) redirect("/panel/complejo")
 
-  const { data: sports } = await supabase.from("sports").select("id, slug, name, active").order("name")
+  const { data: allSports } = await supabase.from("sports").select("id, slug, name, active").order("name")
+  
+  // Filtramos solo los deportes permitidos para este complejo
+  const allowedSlugs = Array.isArray(venue.allowed_sports) ? venue.allowed_sports : ["padel"]
+  const sports = (allSports || []).filter(s => allowedSlugs.includes(s.slug))
 
   // Cargar horarios de otras canchas para el atajo "Igual que otra cancha"
   const { data: siblings } = await supabase
