@@ -137,7 +137,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
         {!isConfirmed ? (
           <div className="sticky bottom-16 rounded-xl border border-border bg-card p-4 shadow-lg md:bottom-4">
             <p className="mb-3 text-xs text-muted-foreground">
-              Pagá la seña para confirmar tu reserva. Sin seña, el turno puede liberarse.
+              Tenés 10 minutos para abonar la seña y asegurar tu turno. Si el tiempo expira, la reserva podría liberarse para otros jugadores.
             </p>
             <PayDepositButton bookingId={b.id} amount={deposit} />
           </div>

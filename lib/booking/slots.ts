@@ -49,7 +49,7 @@ export async function getAvailableSlots(courtId: string, date: string): Promise<
   const [{ data: bookings }, { data: blackouts }] = await Promise.all([
     supabase
       .from("bookings")
-      .select("start_time, end_time, status, series_id")
+      .select("start_time, end_time, status, series_id, created_at")
       .eq("court_id", courtId)
       .in("status", ["pending", "confirmed"])
       .gte("start_time", dayStart)
@@ -62,9 +62,19 @@ export async function getAvailableSlots(courtId: string, date: string): Promise<
       .gt("end_time", dayStart),
   ])
 
+  // Filter out pending bookings that are older than 10 minutes (soft lock expired)
+  const validBookings = (bookings ?? []).filter((b) => {
+    if (b.status === "confirmed") return true
+    if (b.status === "pending") {
+      const ageMs = Date.now() - new Date(b.created_at).getTime()
+      return ageMs <= 10 * 60 * 1000 // 10 minutes
+    }
+    return false
+  })
+
   type Range = { start: number; end: number; kind: "booking" | "fixed" | "blocked" }
   const ranges: Range[] = [
-    ...(bookings ?? []).map<Range>((b) => ({
+    ...validBookings.map<Range>((b) => ({
       start: new Date(b.start_time).getTime(),
       end: new Date(b.end_time).getTime(),
       kind: b.series_id ? "fixed" : "booking",

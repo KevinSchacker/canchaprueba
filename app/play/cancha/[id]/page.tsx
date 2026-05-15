@@ -237,7 +237,7 @@ export default async function CourtDetailPage({
               Reembolso: {c.cancellation_refund_pct}% de la seña.
             </p>
             <p className="mt-2 text-xs text-muted-foreground border-t border-border/50 pt-2">
-              *Jugadores con 4 o más ausencias deberán abonar el 100% por adelantado. Esta penalidad se quita al cumplir con 3 reservas seguidas.
+              *Jugadores con 3 o más ausencias deberán abonar el 100% por adelantado. Esta penalidad se levanta al asistir a 4 reservas seguidas (bajo tolerancia cero).
             </p>
           </div>
           {c.price_rules && (c.price_rules.night?.price || c.price_rules.weekend?.price) && (
@@ -273,7 +273,7 @@ export default async function CourtDetailPage({
             <div>
               <p className="font-semibold text-destructive">Pago completo requerido</p>
               <p className="text-muted-foreground mt-0.5">
-                Registraste 4 o más ausencias anteriores. Esta cancha requiere que abones el turno completo al momento de la reserva.
+                Registraste 3 o más ausencias. Por política, debes abonar el 100% del turno por adelantado. (Completa 4 turnos asistiendo para redimirte).
               </p>
             </div>
           </div>
