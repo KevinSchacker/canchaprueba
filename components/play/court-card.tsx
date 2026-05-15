@@ -30,23 +30,23 @@ export function CourtCard({
   return (
     <Link
       href={`/play/cancha/${id}`}
-      className="group block rounded-xl outline-none ring-offset-2 transition-shadow focus-visible:ring-2 focus-visible:ring-primary"
+      className="group block rounded-xl outline-none ring-offset-2 transition-all focus-visible:ring-2 focus-visible:ring-primary"
     >
-      <Card className="overflow-hidden transition-shadow hover:shadow-md">
-        <div className="relative h-40 w-full bg-secondary">
+      <Card className="overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 hover:border-primary/50">
+        <div className="relative h-44 w-full overflow-hidden bg-secondary">
           {coverImageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={coverImageUrl || "/placeholder.svg"}
               alt={`Foto de ${venueName}`}
-              className="h-full w-full object-cover"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : (
-            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-accent/10">
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-primary/15 to-accent/10 transition-transform duration-500 group-hover:scale-105">
               <span className="text-sm font-medium text-primary/60">{venueName}</span>
             </div>
           )}
-          <span className="absolute right-3 top-3 rounded-full bg-background/90 px-2.5 py-1 text-xs font-semibold text-foreground shadow-sm">
+          <span className="absolute right-3 top-3 rounded-full bg-background/80 backdrop-blur-md px-3 py-1.5 text-xs font-bold text-foreground shadow-sm ring-1 ring-border/50">
             ${pricePerSlot.toLocaleString("es-AR")}
           </span>
         </div>
@@ -61,19 +61,19 @@ export function CourtCard({
             <MapPin className="h-3.5 w-3.5 text-accent" aria-hidden="true" />
             {city}
           </div>
-          <div className="mt-1 flex flex-wrap gap-1.5">
+          <div className="mt-2 flex flex-wrap gap-1.5">
             {surface && (
-              <span className="rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">{surface}</span>
+              <span className="rounded-md bg-secondary/70 border border-border/50 px-2 py-0.5 text-xs text-secondary-foreground font-medium">{surface}</span>
             )}
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-              {indoor ? "Techada" : <><Sun className="h-3 w-3" aria-hidden="true" /> Aire libre</>}
+            <span className="inline-flex items-center gap-1 rounded-md bg-secondary/70 border border-border/50 px-2 py-0.5 text-xs text-secondary-foreground font-medium">
+              {indoor ? "Techada" : <><Sun className="h-3 w-3 text-orange-500" aria-hidden="true" /> Aire libre</>}
             </span>
             {hasLighting && (
-              <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
-                <Lightbulb className="h-3 w-3" aria-hidden="true" /> Iluminación
+              <span className="inline-flex items-center gap-1 rounded-md bg-secondary/70 border border-border/50 px-2 py-0.5 text-xs text-secondary-foreground font-medium">
+                <Lightbulb className="h-3 w-3 text-yellow-500" aria-hidden="true" /> Iluminación
               </span>
             )}
-            <span className="inline-flex items-center gap-1 rounded-md bg-secondary px-2 py-0.5 text-xs text-secondary-foreground">
+            <span className="inline-flex items-center gap-1 rounded-md bg-primary/10 text-primary border border-primary/20 px-2 py-0.5 text-xs font-semibold">
               <Clock className="h-3 w-3" aria-hidden="true" /> {slotDurationMinutes} min
             </span>
           </div>

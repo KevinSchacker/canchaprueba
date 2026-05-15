@@ -163,7 +163,7 @@ export function WeeklyAgenda({ bookings, courts = [], schedules = [], venueId }:
       </div>
 
       {/* Grilla */}
-      <div className="overflow-x-auto rounded-xl border border-border">
+      <div className="overflow-x-auto scrollbar-hide rounded-xl border border-border shadow-sm">
         <div style={{ minWidth: `${Math.max(640, 7 * courts.length * 90 + 48)}px` }}>
           {/* Cabecera de días con sub-columnas de canchas integradas */}
           <div className="grid border-b border-border" style={{ gridTemplateColumns: "48px repeat(7, minmax(0, 1fr))" }}>
