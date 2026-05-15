@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Logo } from "@/components/brand/logo"
 import { BottomNav } from "@/components/play/bottom-nav"
 import { PayDepositButton } from "@/components/play/pay-deposit-button"
+import { SoftLockTimer } from "@/components/play/soft-lock-timer"
 
 export const dynamic = "force-dynamic"
 
@@ -21,7 +22,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
     .from("bookings")
     .select(
       `
-      id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes,
+      id, start_time, end_time, status, total_price, deposit_amount, deposit_paid, notes, created_at,
       courts!inner (
         id, name, slot_duration_minutes,
         venues!inner ( id, name, address, city, phone )
@@ -41,6 +42,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
     deposit_amount: string | number
     deposit_paid: boolean
     notes: string | null
+    created_at: string
     courts: {
       id: string
       name: string
@@ -136,9 +138,7 @@ export default async function BookingConfirmationPage({ params }: { params: Prom
 
         {!isConfirmed ? (
           <div className="sticky bottom-16 rounded-xl border border-border bg-card p-4 shadow-lg md:bottom-4">
-            <p className="mb-3 text-xs text-muted-foreground">
-              Tenés 10 minutos para abonar la seña y asegurar tu turno. Si el tiempo expira, la reserva podría liberarse para otros jugadores.
-            </p>
+            <SoftLockTimer createdAt={b.created_at} />
             <PayDepositButton bookingId={b.id} amount={deposit} />
           </div>
         ) : (
